@@ -1,0 +1,5 @@
+Lage program med random piler.
+
+Personen som sitter ved siden av uten hjelm trykker på enter, dette lager et startsignal som er referansepunktet til signalet. 
+Med bestmt tidsintervall vil det dukke opp en pil i en tilfeldig retning, personen beveger tungen i denne retningen. Alt er intervallbestemt slik at det blir lettere
+å se hvor signalet fra tungebevegelsen skulle ha dukket opp. 
