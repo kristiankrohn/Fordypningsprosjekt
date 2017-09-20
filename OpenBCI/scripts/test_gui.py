@@ -6,7 +6,7 @@ import time
 #import matplotlib.pyplot as plt
 #import matplotlib.animation as animation
 #from matplotlib import style
-import pyqtgraph
+from pyqtgraph.Qt import QtGui, QtCore
 from streamplot import PlotManager
 
 
@@ -30,7 +30,7 @@ def printData(sample):
 	#print "----------------"
 	global i
 	global plt_mgr
-	print(i)
+	#print(i)
 	plt_mgr.add(name="Channel 1", x=i, y=sample.channel_data[0])
 	plt_mgr.add(name="Channel 2", x=i, y=sample.channel_data[1])
 	plt_mgr.add(name="Channel 3", x=i, y=sample.channel_data[2])
@@ -41,6 +41,20 @@ def printData(sample):
 	plt_mgr.add(name="Channel 8", x=i, y=sample.channel_data[7])
 	plt_mgr.update()
 	i = i + 1
+
+#p6 = win.addPlot(title="Updating plot")
+#curve = p6.plot(pen='y')
+#data = np.random.normal(size=(10,1000))
+#ptr = 0
+#def update():
+    #global curve, data, ptr, p6
+    #curve.setData(data[ptr%10])
+    #if ptr == 0:
+        #p6.enableAutoRange('xy', False)  ## stop auto-scaling after the first data set is plotted
+    #ptr += 1
+#timer = QtCore.QTimer()
+#timer.timeout.connect(update)
+#timer.start(50)
 
 #def main():
 port = 'COM6'

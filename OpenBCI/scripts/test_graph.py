@@ -2,6 +2,7 @@ from streamplot import PlotManager
 import numpy as np
 import time
 
+
 length = 10000
 costs  = np.arange(length)
 
