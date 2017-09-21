@@ -8,6 +8,9 @@ import numpy as np
 import pyqtgraph as pg
 from pyqtgraph.ptime import time
 import threading
+from threading import Lock
+
+mutex = Lock()
 
 app = QtGui.QApplication([])
 p = pg.plot()
@@ -41,30 +44,43 @@ def dataCatcher():
 	global board
 	board.start_streaming(printData)
 def printData(sample):	
-	print("fallos")
+	#print("fallos")
+	global nPlots, data 
+	
+	with(mutex):
+		for i in range(nPlots):
+			avg = 0
+			for j in range(len(data[0])-1):
+				avg = avg + data[i][j]
 
+			average = avg / len(data)
+			data[i].append((sample.channel_data[i]/1000)-average)
+	
+		if len(data[0]) >= 1800:
+			for i in range(nPlots):
+				data[i].pop(0)
+	
 def update():
 	global curve, data, ptr, p, lastTime, fps, nPlots, count, board
 	count += 1
 
-	sample = board._read_serial_binary()
+	#sample = board._read_serial_binary()
 	#data.append(sample.channel_data)
 	#print("penis")
-	for i in range(nPlots):
-		avg = 0
-		for j in range(len(data[0])-1):
-			avg = avg + data[i][j]
-			#if j > 980:
-				#print(j)
-		average = avg / len(data)
-		data[i].append((sample.channel_data[i]/1000)-average)
+	#for i in range(nPlots):
+		#avg = 0
+		#for j in range(len(data[0])-1):
+			#avg = avg + data[i][j]
+
+		#average = avg / len(data)
+		#data[i].append((sample.channel_data[i]/1000)-average)
 		#print(i)
 
 
 
-	if count >= 1800:
-		for i in range(nPlots):
-			data[i].pop(0)
+	#if count >= 1800:
+		#for i in range(nPlots):
+			#data[i].pop(0)
 	#print(len(data[0]))	
 	#data = np.append(data, sample.channel_data)
 	#if data.shape[0] >= nSamples:
@@ -73,9 +89,10 @@ def update():
 	#print(data[0])
 	#print(data.shape[0])
     #print "---------", count
-	for i in range(nPlots):
+	with(mutex):
+		for i in range(nPlots):
 		#curves[i].setData(data[(ptr+i)%data.shape[0]])
-		curves[i].setData(data[i])
+			curves[i].setData(data[i])
 		#print(data[i][count-1])
     #print "   setData done."
 	ptr += nPlots
@@ -129,13 +146,18 @@ def main():
 		#data = sample.channel_data
 		#print(sample.channel_data)		
 		#update()
-	#thread1 = threading.Thread(target=QtGui.QApplication.instance().exec_(),args=())
+	
 	thread2 = threading.Thread(target=dataCatcher,args=())
-	#thread1.start()
 	thread2.start()
-	QtGui.QApplication.instance().exec_()
+	thread1 = threading.Thread(target=QtGui.QApplication.instance().exec_(),args=())
+	thread1.start()
+	thread1.join()
+	thread2.join()
+	#QtGui.QApplication.instance().exec_()
 	#while True:
-		#print("pikk")	
+		#print("pikk")
+	#thread1.stop()
+	#thread2.stop()
 if __name__ == '__main__':
 	main()
 	#import sys
