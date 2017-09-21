@@ -50,12 +50,13 @@ def update():
     global curve, data, ptr, p, lastTime, fps, nPlots, count
     count += 1
     print "---------", count
+    #print(data[0])
     #print(data[(ptr)%data.shape[0]])
     for i in range(nPlots):
-        curves[i].setData(data[(ptr+i)%data.shape[0]])
-        #curves[i].SetData(data[i%3])
-        print i, "\n"
-        print(data[(ptr+i)%nSamples])
+        #curves[i].setData(data[(ptr+i)%data.shape[0]])
+        curves[i].setData(data[(ptr+i)%500])
+        #print i, "\n"
+        #print(data[(ptr+i)%nSamples])
         
     print "   setData done."
     ptr += nPlots

@@ -7,7 +7,7 @@ from pyqtgraph.Qt import QtGui, QtCore
 import numpy as np
 import pyqtgraph as pg
 from pyqtgraph.ptime import time
-
+import threading
 
 app = QtGui.QApplication([])
 p = pg.plot()
@@ -22,7 +22,7 @@ ptr = 0
 lastTime = time()
 fps = None
 count = 0
-data = np.array([])
+data = [],[],[],[],[],[],[],[]
 
 
 port = 'COM6'
@@ -37,24 +37,46 @@ if not board.streaming:
 	board.ser.write(b'b')
 	board.streaming = True
 
-	
-
+def dataCatcher():
+	global board
+	board.start_streaming(printData)
+def printData(sample):	
+	print("fallos")
 
 def update():
 	global curve, data, ptr, p, lastTime, fps, nPlots, count, board
 	count += 1
 
 	sample = board._read_serial_binary()
-	data = np.append(data, sample.channel_data)
-	if data.shape[0] >= nSamples:
-		data = np.delete(data, data[0:7:1])
-		print("deliting")
-	print(data)
-	print(data.shape[0])
+	#data.append(sample.channel_data)
+	#print("penis")
+	for i in range(nPlots):
+		avg = 0
+		for j in range(len(data[0])-1):
+			avg = avg + data[i][j]
+			#if j > 980:
+				#print(j)
+		average = avg / len(data)
+		data[i].append((sample.channel_data[i]/1000)-average)
+		#print(i)
+
+
+
+	if count >= 1800:
+		for i in range(nPlots):
+			data[i].pop(0)
+	#print(len(data[0]))	
+	#data = np.append(data, sample.channel_data)
+	#if data.shape[0] >= nSamples:
+	#	data = np.delete(data, data[0:7:1])
+	#	print("delete")
+	#print(data[0])
+	#print(data.shape[0])
     #print "---------", count
 	for i in range(nPlots):
 		#curves[i].setData(data[(ptr+i)%data.shape[0]])
-		curves[i].setData(data[(ptr+i)%data.shape[0]])
+		curves[i].setData(data[i])
+		#print(data[i][count-1])
     #print "   setData done."
 	ptr += nPlots
 	now = time()
@@ -81,15 +103,16 @@ def main():
 	for i in range(nPlots):
 		c = pg.PlotCurveItem(pen=(i,nPlots*1.3))
 		p.addItem(c)
-		c.setPos(0,i*6)
+		c.setPos(0,i*100+100)
 		curves.append(c)
 
-	p.setYRange(0, nPlots*6)
+	#p.setYRange(0, nPlots*6)
+	p.setYRange(0, nPlots*100)
 	p.setXRange(0, nSamples)
-	p.resize(600,900)
+	p.resize(1000,1000)
 
-	rgn = pg.LinearRegionItem([nSamples/5.,nSamples/3.])
-	p.addItem(rgn)
+	#rgn = pg.LinearRegionItem([nSamples/5.,nSamples/3.])
+	#p.addItem(rgn)
 
 	sample = board._read_serial_binary()
 	data = sample.channel_data
@@ -105,8 +128,14 @@ def main():
 		#sample = board._read_serial_binary()
 		#data = sample.channel_data
 		#print(sample.channel_data)		
+		#update()
+	#thread1 = threading.Thread(target=QtGui.QApplication.instance().exec_(),args=())
+	thread2 = threading.Thread(target=dataCatcher,args=())
+	#thread1.start()
+	thread2.start()
 	QtGui.QApplication.instance().exec_()
-		
+	#while True:
+		#print("pikk")	
 if __name__ == '__main__':
 	main()
 	#import sys
