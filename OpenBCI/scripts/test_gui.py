@@ -12,6 +12,21 @@ from threading import Lock
 from scipy import signal
 mutex = Lock()
 
+#Helmetsetup
+port = 'COM6'
+baud = 115200
+logging.basicConfig(filename="test.log",format='%(asctime)s - %(levelname)s : %(message)s',level=logging.DEBUG)
+logging.info('---------LOG START-------------')
+board = bci.OpenBCIBoard(port=port, scaled_output=False, log=True)
+print("Board Instantiated")
+board.ser.write('v')
+tme.sleep(10)
+if not board.streaming:
+	board.ser.write(b'b')
+	board.streaming = True
+
+
+
 #Graph setup
 app = QtGui.QApplication([])
 p = pg.plot()
@@ -32,37 +47,46 @@ averagedata = [],[],[],[],[],[],[],[]
 displayUV = []
 df = 0.001
 
+for i in range(nPlots):
+	c = pg.PlotCurveItem(pen=(i,nPlots*1.3))
+	p.addItem(c)
+	c.setPos(0,i*100+100)
+	curves.append(c)
 
-#Helmetsetup
-port = 'COM6'
-baud = 115200
-logging.basicConfig(filename="test.log",format='%(asctime)s - %(levelname)s : %(message)s',level=logging.DEBUG)
-logging.info('---------LOG START-------------')
-board = bci.OpenBCIBoard(port=port, scaled_output=False, log=True)
-print("Board Instantiated")
-board.ser.write('v')
-tme.sleep(10)
-if not board.streaming:
-	board.ser.write(b'b')
-	board.streaming = True
+#p.setYRange(0, nPlots*6)
+p.setYRange(0, nPlots*100)
+p.setXRange(0, nSamples)
+p.resize(1000,1000)
+
+#rgn = pg.LinearRegionItem([nSamples/5.,nSamples/3.])
+#p.addItem(rgn)
+
+#sample = board._read_serial_binary()
+#data = sample.channel_data
+
+
+
+
+
+print("Graphsetup finished")
+
 
 #Filtersetup
+window = 15
 fs = 250.0
 f0 = 50.0
-Q = 30
+Q = 100
 w0 = f0/(fs/2)
 b, a = signal.iirnotch(w0, Q) 
 bandstopFilter = True
-
+#print("B: ", b)
+#print("A: ", a)
 sample = board._read_serial_binary()
-zi = np.array([[],[],[],[],[],[],[],[]], int)
+#zi = np.array([[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]])
+zi = np.array([[0],[0],[0],[0],[0],[0],[0],[0]])
+init = 0
 
-#zi = []
-print(zi)
-for i in range(nPlots):
-	print(i)
-	zi[i] = signal.lfilter_zi(b, a) * sample.channel_data[i]
-print(zi)
+print("Filtersetup finished")
 
 def convtouV(input):
 	return (input * 0.02235)
@@ -74,9 +98,22 @@ def dataCatcher():
 
 def printData(sample):	
 
-	global nPlots, data, a, b, zi, df 
-	
+	global nPlots, data, a, b, zi, df, init 
+
+
 	with(mutex):
+		if init == 0:
+			print(sample.channel_data)
+			#zi = []
+			print(zi[0])
+			print(zi.shape)
+			for i in range(nPlots):
+				print(i)
+				zi[i] = signal.lfilter_zi(b, a) * sample.channel_data[i]
+			print(zi)
+			init = 1
+
+
 		for i in range(nPlots):
 			avg = 0
 
@@ -92,27 +129,38 @@ def printData(sample):
 			#print("Data: ", (sample.channel_data[i]-average) * 0.02235)
 			#print("Length of array: ", len(rawdata[0]))
 			if bandstopFilter:
-				x = (sample.channel_data[i]-average) * df
-				y, zi[i] = signal.lfilter(b, a, x, zi[i])
-				data[i].append(y)
+				averagedata[i].append(sample.channel_data[i]-average)
+				#print(averagedata[i])
 			else:
 				data[i].append((sample.channel_data[i]-average) * df)
 			#displayUV[i] = (sample.channel_data[i]-average) * 0.02235
 
-			averagedata[i].append(average)
-			
-
-
 		if len(data[0]) >= 1800:
 			for i in range(nPlots):
 				data[i].pop(0)
-				averagedata[i].pop(0)
+				
 				
 		if len(rawdata[0]) > 1000:
 			for i in range(nPlots):
 				rawdata[i].pop(0)
 
-
+		if len(averagedata[0]) > window:
+			thread3 = threading.Thread(target=notchFilter,args=())
+			thread3.start()
+def notchFilter():
+	global b, a, zi, averagedata, data, window
+	with(mutex):
+		#print(len(averagedata[0]))
+		#if len(averagedata[0]) > window:
+		for i in range(nPlots):
+			print("Length zi: ", len(zi[i]))
+			y, zi[i] = signal.lfilter(b, a, averagedata[i], zi[i])
+			print(y)
+			data[i].append(y*df)
+			averagedata = [0],[0],[0],[0],[0],[0],[0],[0]
+	#x = (sample.channel_data[i]-average) * df
+	#y, zi[i] = signal.lfilter(b, a, x, zi[i])
+	#data[i].append(y)
 
 def update():
 	global curve, data, ptr, p, lastTime, fps, nPlots, count, board
@@ -143,29 +191,7 @@ def main():
 
 	#mw = QtGui.QMainWindow()
 	#mw.resize(800,800)
-
 	
-	global a, b
-
-
-	for i in range(nPlots):
-		c = pg.PlotCurveItem(pen=(i,nPlots*1.3))
-		p.addItem(c)
-		c.setPos(0,i*100+100)
-		curves.append(c)
-
-	#p.setYRange(0, nPlots*6)
-	p.setYRange(0, nPlots*100)
-	p.setXRange(0, nSamples)
-	p.resize(1000,1000)
-
-	#rgn = pg.LinearRegionItem([nSamples/5.,nSamples/3.])
-	#p.addItem(rgn)
-
-	#sample = board._read_serial_binary()
-	#data = sample.channel_data
-
-
 	timer = QtCore.QTimer()
 	timer.timeout.connect(update)
 	timer.start(0)
@@ -175,18 +201,30 @@ def main():
 		#data = sample.channel_data
 		#print(sample.channel_data)		
 		#update()
-	
-	thread2 = threading.Thread(target=dataCatcher,args=())
-	thread2.start()
-	thread1 = threading.Thread(target=QtGui.QApplication.instance().exec_(),args=())
+	print("Setup finished, starting threads")
+	#thread3 = threading.Thread(target=notchFilter,args=())
+	#thread3.start()
+	thread1 = threading.Thread(target=dataCatcher,args=())
 	thread1.start()
-	thread1.join()
-	thread2.join()
+	thread2 = threading.Thread(target=QtGui.QApplication.instance().exec_(),args=())
+	thread2.start()
+	
+	#thread3.join()
+	#thread1.join()
+	#thread2.join()
+	
 	#QtGui.QApplication.instance().exec_()
-	#while True:
+	print("Enter loop")
+	while True:
 
-	#thread1.stop()
-	#thread2.stop()
+		if raw_input() == "c":
+			thread1.stop()
+			thread2.stop()
+			board.stop()
+			board.disconnect()
+	
+
+
 if __name__ == '__main__':
 	main()
 	#import sys
