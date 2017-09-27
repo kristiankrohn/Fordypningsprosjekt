@@ -17,15 +17,16 @@ port = 'COM6'
 baud = 115200
 logging.basicConfig(filename="test.log",format='%(asctime)s - %(levelname)s : %(message)s',level=logging.DEBUG)
 logging.info('---------LOG START-------------')
-board = bci.OpenBCIBoard(port=port, scaled_output=False, log=True, filter_data = False)
+board = bci.OpenBCIBoard(port=port, scaled_output=True, log=True, filter_data = False)
 print("Board Instantiated")
 board.ser.write('v')
 tme.sleep(10)
+
 if not board.streaming:
 	board.ser.write(b'b')
 	board.streaming = True
 
-
+print("Samplerate: %0.2fHz" %board.getSampleRate())
 
 #Graph setup
 app = QtGui.QApplication([])
@@ -45,12 +46,12 @@ data = [],[],[],[],[],[],[],[]
 rawdata = [],[],[],[],[],[],[],[]
 averagedata = [],[],[],[],[],[],[],[]
 displayUV = []
-df = 0.01
+df = 1
 
 for i in range(nPlots):
 	c = pg.PlotCurveItem(pen=(i,nPlots*1.3))
 	p.addItem(c)
-	c.setPos(0,i*100+100)
+	c.setPos(0,i*100+200)
 	curves.append(c)
 
 #p.setYRange(0, nPlots*6)
@@ -78,7 +79,9 @@ f0 = 50.0
 Q = 30
 w0 = f0/(fs/2)
 b, a = signal.iirnotch(w0, Q) 
+filtering = True
 bandstopFilter = True
+lowpassFilter = True
 #print("B: ", b)
 #print("A: ", a)
 sample = board._read_serial_binary()
@@ -86,11 +89,15 @@ zi = np.array([[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]])
 #zi = np.array([[0],[0],[0],[0],[0],[0],[0],[0]])
 init = True
 
+# First, design the Buterworth filter
+N  = 5    # Filter order
+fk = 20
+Wn = fk/(fs/2) # Cutoff frequency
+B, A = signal.butter(N, Wn, output='ba')
+ZI = np.array([[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]])
 
 print("Filtersetup finished")
 
-def convtouV(input):
-	return (input * 0.02235)
 
 def dataCatcher():
 	global board
@@ -99,7 +106,7 @@ def dataCatcher():
 
 def printData(sample):	
 
-	global nPlots, data, df, init, averagedata, rawdata 
+	global nPlots, data, df, init, averagedata, rawdata, threadFilter 
 
 
 	with(mutex):
@@ -118,76 +125,86 @@ def printData(sample):
 			#print("Rawdata: ", sample.channel_data[i] * 0.02235)
 			#print("Data: ", (sample.channel_data[i]-average) * 0.02235)
 			#print("Length of array: ", len(rawdata[0]))
-			if bandstopFilter:
+			if filtering:
 				averagedata[i].append(sample.channel_data[i]-average)
 				#print(averagedata[i])
+
 			else:
 				data[i].append((sample.channel_data[i]-average) * df)
+				
 			#displayUV[i] = (sample.channel_data[i]-average) * 0.02235
 
-		if len(data[0]) >= 1800:
+		if len(data[0]) >= 2000:
 			for i in range(nPlots):
 				data[i].pop(0)
 				
 				
-		if len(rawdata[0]) > 2000:
+		if len(rawdata[0]) > 500:
 			for i in range(nPlots):
 				rawdata[i].pop(0)
 
 		if len(averagedata[0]) >= window:
-			thread3 = threading.Thread(target=notchFilter,args=())
-			thread3.start()
+					
+			threadFilter = threading.Thread(target=notchFilter,args=())
+			threadFilter.start()
 
 
 
 def notchFilter():
-	global b, a, zi, averagedata, data, window, init
+	global b, a, zi, averagedata, data, window, init, bandstopFilter, lowpassFilter, B, A, ZI
 	with(mutex):
-
 		for i in range(nPlots):
-			#print(averagedata[i][0])
-			if init == True:
+			if init == True: #Gjor dette til en funksjon, input koeff, return zi
 				zi[i] = signal.lfilter_zi(b, a) * averagedata[i][0]
+				ZI[i] = signal.lfilter_zi(B, A) * averagedata[i][0]
 				init = False
-			#print(zi)
-			y, zi[i] = signal.lfilter(b, a, averagedata[i], zi=zi[i])
-			#print(zo)
-			for j in range(len(y)):
-				data[i].append(y[j]*df)
+
+		if bandstopFilter and not lowpassFilter:
+			for i in range(nPlots):
+				y, zi[i] = signal.lfilter(b, a, averagedata[i], zi=zi[i])
+				#print(bp)
+				for j in range(len(y)):
+					data[i].append(y[j]*df)
+
+		elif lowpassFilter and not bandstopFilter:
+			for i in range(nPlots):
+				y, ZI[i] = signal.lfilter(B, A, averagedata[i], zi=ZI[i])
+				#print(lp)
+				for j in range(len(y)):
+					data[i].append(y[j]*df)
+
+		elif lowpassFilter and bandstopFilter:
+			for i in range(nPlots):
+				x, zi[i] = signal.lfilter(b, a, averagedata[i], zi=zi[i])
+				y, ZI[i] = signal.lfilter(B, A, x, zi=ZI[i])
+				for j in range(len(y)):
+					data[i].append(y[j]*df)
+				#print(bp and lp)
+		else:
+			for i in range(nPlots):
+				y = averagedata[i]
+
+		#for i in range(nPlots):
+			#for j in range(len(y)):
+				#data[i].append(y[j]*df)
 			#print("Start data")
 			#print(y)
 		averagedata = [],[],[],[],[],[],[],[]
-		#print(len(averagedata[0]))
-		#if len(averagedata[0]) > window:
-		#if init == 0:
-			#print(sample.channel_data)
-			#zi = []
-			#print(zi[0])
-			#print(zi.shape)
-			#for i in range(nPlots):
-				#print(i)
-				#zi[i] = signal.lfilter_zi(b, a) * averagedata[i]
-			#print(zi)
-			#init = 1
-		
-		#for i in range(nPlots):
-			#print("Length zi: ", len(zi[i]))
-			#y, zi[i] = signal.lfilter(b, a, averagedata[i], zi[i])
-			#print(y)
-			#data[i].append(y*df)
-			#averagedata = [0],[0],[0],[0],[0],[0],[0],[0]
-	#x = (sample.channel_data[i]-average) * df
-	#y, zi[i] = signal.lfilter(b, a, x, zi[i])
-	#data[i].append(y)
+
+
 
 def update():
 	global curve, data, ptr, p, lastTime, fps, nPlots, count, board
 	count += 1
-
+	string = ""
 	with(mutex):
 		for i in range(nPlots):
 		#curves[i].setData(data[(ptr+i)%data.shape[0]])
 			curves[i].setData(data[i])
+			if len(data[i])>100:
+				string += '   Ch: %d ' % i
+				string += ' = %0.2f uV ' % data[i][-1]
+			
 			#curves[i].setData(averagedata[i])
 		#print(data[i][count-1])
     #print "   setData done."
@@ -200,9 +217,39 @@ def update():
 	else:
 		s = np.clip(dt*3., 0, 1)
 		fps = fps * (1-s) + (1.0/dt) * s
-	p.setTitle('%0.2f fps' % fps)
-
+	#p.setTitle('%0.2f fps' % fps)
+	p.setTitle(string)
     #app.processEvents()  ## force complete redraw for every plot
+
+def keys():
+	#global thread1, thread2
+	global board, bandstopFilter, filtering, lowpassFilter
+	while True:
+		string = raw_input()
+		if string == "notch=true":
+			bandstopFilter = True
+		elif string == "notch=false":
+			bandstopFilter = False
+		elif string == "filter=true":
+			filtering = True
+			print(filtering)
+		elif string == "filter=false":
+			filtering = False
+			print(filtering)
+		elif string == "lowpass=true":
+			lowpassFilter = True
+		elif string == "lowpass=false":
+			lowpassFilter = False
+
+		elif string == "exit":
+			print("Initiating exit sequence")
+			#thread1.stop()
+			#thread2.stop()
+			board.stop()
+			board.disconnect()
+			QtGui.QApplication.quit()
+			sys.exit()
+
 
 
 def main():
@@ -214,32 +261,23 @@ def main():
 	timer.timeout.connect(update)
 	timer.start(0)
 
-	#while True:
-		#sample = board._read_serial_binary()
-		#data = sample.channel_data
-		#print(sample.channel_data)		
-		#update()
 	print("Setup finished, starting threads")
-	#thread3 = threading.Thread(target=notchFilter,args=())
-	#thread3.start()
+
+	thread0 = threading.Thread(target=keys,args=())
 	thread1 = threading.Thread(target=dataCatcher,args=())
-	thread1.start()
-	thread2 = threading.Thread(target=QtGui.QApplication.instance().exec_(),args=())
-	thread2.start()
+	thread0.start()
+	thread1.start()	
 	
-	#thread3.join()
+	#thread2 = threading.Thread(target=QtGui.QApplication.instance().exec_(),args=())
+
+	#thread2.start()
+	
+	#thread0.join()
 	#thread1.join()
 	#thread2.join()
 	
-	#QtGui.QApplication.instance().exec_()
-	print("Enter loop")
-	while True:
+	QtGui.QApplication.instance().exec_()
 
-		if raw_input() == "c":
-			thread1.stop()
-			thread2.stop()
-			board.stop()
-			board.disconnect()
 	
 
 
