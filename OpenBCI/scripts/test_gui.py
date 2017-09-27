@@ -17,7 +17,7 @@ port = 'COM6'
 baud = 115200
 logging.basicConfig(filename="test.log",format='%(asctime)s - %(levelname)s : %(message)s',level=logging.DEBUG)
 logging.info('---------LOG START-------------')
-board = bci.OpenBCIBoard(port=port, scaled_output=False, log=True)
+board = bci.OpenBCIBoard(port=port, scaled_output=False, log=True, filter_data = False)
 print("Board Instantiated")
 board.ser.write('v')
 tme.sleep(10)
@@ -45,7 +45,7 @@ data = [],[],[],[],[],[],[],[]
 rawdata = [],[],[],[],[],[],[],[]
 averagedata = [],[],[],[],[],[],[],[]
 displayUV = []
-df = 0.001
+df = 0.01
 
 for i in range(nPlots):
 	c = pg.PlotCurveItem(pen=(i,nPlots*1.3))
@@ -72,19 +72,20 @@ print("Graphsetup finished")
 
 
 #Filtersetup
-window = 15
+window = 125
 fs = 250.0
 f0 = 50.0
-Q = 100
+Q = 30
 w0 = f0/(fs/2)
 b, a = signal.iirnotch(w0, Q) 
 bandstopFilter = True
 #print("B: ", b)
 #print("A: ", a)
 sample = board._read_serial_binary()
-#zi = np.array([[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]])
-zi = np.array([[0],[0],[0],[0],[0],[0],[0],[0]])
-init = 0
+zi = np.array([[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]])
+#zi = np.array([[0],[0],[0],[0],[0],[0],[0],[0]])
+init = True
+
 
 print("Filtersetup finished")
 
@@ -98,21 +99,10 @@ def dataCatcher():
 
 def printData(sample):	
 
-	global nPlots, data, a, b, zi, df, init 
+	global nPlots, data, df, init, averagedata, rawdata 
 
 
 	with(mutex):
-		if init == 0:
-			print(sample.channel_data)
-			#zi = []
-			print(zi[0])
-			print(zi.shape)
-			for i in range(nPlots):
-				print(i)
-				zi[i] = signal.lfilter_zi(b, a) * sample.channel_data[i]
-			print(zi)
-			init = 1
-
 
 		for i in range(nPlots):
 			avg = 0
@@ -140,24 +130,52 @@ def printData(sample):
 				data[i].pop(0)
 				
 				
-		if len(rawdata[0]) > 1000:
+		if len(rawdata[0]) > 2000:
 			for i in range(nPlots):
 				rawdata[i].pop(0)
 
-		if len(averagedata[0]) > window:
+		if len(averagedata[0]) >= window:
 			thread3 = threading.Thread(target=notchFilter,args=())
 			thread3.start()
+
+
+
 def notchFilter():
-	global b, a, zi, averagedata, data, window
+	global b, a, zi, averagedata, data, window, init
 	with(mutex):
+
+		for i in range(nPlots):
+			#print(averagedata[i][0])
+			if init == True:
+				zi[i] = signal.lfilter_zi(b, a) * averagedata[i][0]
+				init = False
+			#print(zi)
+			y, zi[i] = signal.lfilter(b, a, averagedata[i], zi=zi[i])
+			#print(zo)
+			for j in range(len(y)):
+				data[i].append(y[j]*df)
+			#print("Start data")
+			#print(y)
+		averagedata = [],[],[],[],[],[],[],[]
 		#print(len(averagedata[0]))
 		#if len(averagedata[0]) > window:
-		for i in range(nPlots):
-			print("Length zi: ", len(zi[i]))
-			y, zi[i] = signal.lfilter(b, a, averagedata[i], zi[i])
-			print(y)
-			data[i].append(y*df)
-			averagedata = [0],[0],[0],[0],[0],[0],[0],[0]
+		#if init == 0:
+			#print(sample.channel_data)
+			#zi = []
+			#print(zi[0])
+			#print(zi.shape)
+			#for i in range(nPlots):
+				#print(i)
+				#zi[i] = signal.lfilter_zi(b, a) * averagedata[i]
+			#print(zi)
+			#init = 1
+		
+		#for i in range(nPlots):
+			#print("Length zi: ", len(zi[i]))
+			#y, zi[i] = signal.lfilter(b, a, averagedata[i], zi[i])
+			#print(y)
+			#data[i].append(y*df)
+			#averagedata = [0],[0],[0],[0],[0],[0],[0],[0]
 	#x = (sample.channel_data[i]-average) * df
 	#y, zi[i] = signal.lfilter(b, a, x, zi[i])
 	#data[i].append(y)
