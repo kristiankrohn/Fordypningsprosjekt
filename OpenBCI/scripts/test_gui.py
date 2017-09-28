@@ -59,37 +59,29 @@ p.setYRange(0, nPlots*100)
 p.setXRange(0, nSamples)
 p.resize(1000,1000)
 
-#rgn = pg.LinearRegionItem([nSamples/5.,nSamples/3.])
-#p.addItem(rgn)
-
-#sample = board._read_serial_binary()
-#data = sample.channel_data
-
-
-
 
 
 print("Graphsetup finished")
 
 
 #Filtersetup
-window = 125
+#Notchfilter
+window = 75
 fs = 250.0
 f0 = 50.0
-Q = 30
+Q = 100
 w0 = f0/(fs/2)
 b, a = signal.iirnotch(w0, Q) 
 filtering = True
 bandstopFilter = True
 lowpassFilter = True
-#print("B: ", b)
-#print("A: ", a)
+
 sample = board._read_serial_binary()
 zi = np.array([[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]])
-#zi = np.array([[0],[0],[0],[0],[0],[0],[0],[0]])
+
 init = True
 
-# First, design the Buterworth filter
+#Buterworth filter
 N  = 5    # Filter order
 fk = 20
 Wn = fk/(fs/2) # Cutoff frequency
@@ -120,20 +112,13 @@ def printData(sample):
 				avg = avg + rawdata[i][j]
 
 			average = avg / (len(rawdata[0]))
-			#print("Kanal: ", i)
-			#print("Offset: ", (average * 0.02235))
-			#print("Rawdata: ", sample.channel_data[i] * 0.02235)
-			#print("Data: ", (sample.channel_data[i]-average) * 0.02235)
-			#print("Length of array: ", len(rawdata[0]))
+
 			if filtering:
 				averagedata[i].append(sample.channel_data[i]-average)
-				#print(averagedata[i])
 
 			else:
 				data[i].append((sample.channel_data[i]-average) * df)
 				
-			#displayUV[i] = (sample.channel_data[i]-average) * 0.02235
-
 		if len(data[0]) >= 2000:
 			for i in range(nPlots):
 				data[i].pop(0)
@@ -153,6 +138,7 @@ def printData(sample):
 def notchFilter():
 	global b, a, zi, averagedata, data, window, init, bandstopFilter, lowpassFilter, B, A, ZI
 	with(mutex):
+		
 		for i in range(nPlots):
 			if init == True: #Gjor dette til en funksjon, input koeff, return zi
 				zi[i] = signal.lfilter_zi(b, a) * averagedata[i][0]
@@ -162,14 +148,12 @@ def notchFilter():
 		if bandstopFilter and not lowpassFilter:
 			for i in range(nPlots):
 				y, zi[i] = signal.lfilter(b, a, averagedata[i], zi=zi[i])
-				#print(bp)
 				for j in range(len(y)):
 					data[i].append(y[j]*df)
 
 		elif lowpassFilter and not bandstopFilter:
 			for i in range(nPlots):
 				y, ZI[i] = signal.lfilter(B, A, averagedata[i], zi=ZI[i])
-				#print(lp)
 				for j in range(len(y)):
 					data[i].append(y[j]*df)
 
@@ -179,16 +163,11 @@ def notchFilter():
 				y, ZI[i] = signal.lfilter(B, A, x, zi=ZI[i])
 				for j in range(len(y)):
 					data[i].append(y[j]*df)
-				#print(bp and lp)
 		else:
 			for i in range(nPlots):
-				y = averagedata[i]
-
-		#for i in range(nPlots):
-			#for j in range(len(y)):
-				#data[i].append(y[j]*df)
-			#print("Start data")
-			#print(y)
+				y = averagedata[i]	
+				for j in range(len(y)):
+					data[i].append(y[j]*df)
 		averagedata = [],[],[],[],[],[],[],[]
 
 
@@ -199,30 +178,21 @@ def update():
 	string = ""
 	with(mutex):
 		for i in range(nPlots):
-		#curves[i].setData(data[(ptr+i)%data.shape[0]])
 			curves[i].setData(data[i])
 			if len(data[i])>100:
 				string += '   Ch: %d ' % i
 				string += ' = %0.2f uV ' % data[i][-1]
-			
-			#curves[i].setData(averagedata[i])
-		#print(data[i][count-1])
-    #print "   setData done."
+
 	ptr += nPlots
 	now = time()
 	dt = now - lastTime	
 	lastTime = now
-	if fps is None:
-		fps = 1.0/dt
-	else:
-		s = np.clip(dt*3., 0, 1)
-		fps = fps * (1-s) + (1.0/dt) * s
-	#p.setTitle('%0.2f fps' % fps)
+
 	p.setTitle(string)
     #app.processEvents()  ## force complete redraw for every plot
 
 def keys():
-	#global thread1, thread2
+
 	global board, bandstopFilter, filtering, lowpassFilter
 	while True:
 		string = raw_input()
@@ -243,8 +213,6 @@ def keys():
 
 		elif string == "exit":
 			print("Initiating exit sequence")
-			#thread1.stop()
-			#thread2.stop()
 			board.stop()
 			board.disconnect()
 			QtGui.QApplication.quit()
@@ -254,8 +222,8 @@ def keys():
 
 def main():
 
-	#mw = QtGui.QMainWindow()
-	#mw.resize(800,800)
+	mw = QtGui.QMainWindow()
+	mw.resize(800,800)
 	
 	timer = QtCore.QTimer()
 	timer.timeout.connect(update)
@@ -283,6 +251,3 @@ def main():
 
 if __name__ == '__main__':
 	main()
-	#import sys
-	#if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
-		#QtGui.QApplication.instance().exec_()
