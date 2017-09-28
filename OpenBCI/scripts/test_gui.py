@@ -37,6 +37,7 @@ p.setWindowTitle('pyqtgraph example: MultiPlotSpeedTest')
 #p.setRange(QtCore.QRectF(0, -10, 5000, 20)) 
 p.setLabel('bottom', 'Index', units='B')
 #curves = [p.plot(pen=(i,nPlots*1.3)) for i in range(nPlots)]
+
 curves = []
 ptr = 0
 lastTime = time()
@@ -97,15 +98,12 @@ def dataCatcher():
 
 
 def printData(sample):	
-
 	global nPlots, data, df, init, averagedata, rawdata, threadFilter 
-
 
 	with(mutex):
 
 		for i in range(nPlots):
 			avg = 0
-
 			rawdata[i].append(sample.channel_data[i])
 
 			for j in range(len(rawdata[0])-1):
@@ -128,17 +126,18 @@ def printData(sample):
 			for i in range(nPlots):
 				rawdata[i].pop(0)
 
-		if len(averagedata[0]) >= window:
-					
+		if len(averagedata[0]) >= window:					
 			threadFilter = threading.Thread(target=notchFilter,args=())
 			threadFilter.start()
 
-
+def appendData(y, i):
+	for j in range(len(y)):
+		data[i].append(y[j]*df)
 
 def notchFilter():
 	global b, a, zi, averagedata, data, window, init, bandstopFilter, lowpassFilter, B, A, ZI
 	with(mutex):
-		
+
 		for i in range(nPlots):
 			if init == True: #Gjor dette til en funksjon, input koeff, return zi
 				zi[i] = signal.lfilter_zi(b, a) * averagedata[i][0]
@@ -148,26 +147,24 @@ def notchFilter():
 		if bandstopFilter and not lowpassFilter:
 			for i in range(nPlots):
 				y, zi[i] = signal.lfilter(b, a, averagedata[i], zi=zi[i])
-				for j in range(len(y)):
-					data[i].append(y[j]*df)
+				appendData(y,i)
 
 		elif lowpassFilter and not bandstopFilter:
 			for i in range(nPlots):
 				y, ZI[i] = signal.lfilter(B, A, averagedata[i], zi=ZI[i])
-				for j in range(len(y)):
-					data[i].append(y[j]*df)
+				appendData(y,i)
 
 		elif lowpassFilter and bandstopFilter:
 			for i in range(nPlots):
 				x, zi[i] = signal.lfilter(b, a, averagedata[i], zi=zi[i])
 				y, ZI[i] = signal.lfilter(B, A, x, zi=ZI[i])
-				for j in range(len(y)):
-					data[i].append(y[j]*df)
+				appendData(y,i)
+
 		else:
 			for i in range(nPlots):
-				y = averagedata[i]	
-				for j in range(len(y)):
-					data[i].append(y[j]*df)
+				y[i] = averagedata[i]
+				appendData(y,i)
+		
 		averagedata = [],[],[],[],[],[],[],[]
 
 
