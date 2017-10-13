@@ -10,6 +10,7 @@ from pyqtgraph.ptime import time
 import threading
 from threading import Lock
 from scipy import signal
+import matplotlib.pyplot as plt
 mutex = Lock()
 
 #Helmetsetup
@@ -20,7 +21,7 @@ logging.info('---------LOG START-------------')
 board = bci.OpenBCIBoard(port=port, scaled_output=True, log=True, filter_data = False)
 print("Board Instantiated")
 board.ser.write('v')
-tme.sleep(10)
+#tme.sleep(10)
 
 if not board.streaming:
 	board.ser.write(b'b')
@@ -70,24 +71,38 @@ print("Graphsetup finished")
 window = 75
 fs = 250.0
 f0 = 50.0
-Q = 100
+Q = 50
 w0 = f0/(fs/2)
-b, a = signal.iirnotch(w0, Q) 
+notchB, notchA = signal.iirnotch(w0, Q) 
+
+
 filtering = True
 bandstopFilter = True
-lowpassFilter = True
+lowpassFilter = False
+bandpassFilter = True
+
 
 sample = board._read_serial_binary()
-zi = np.array([[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]])
+notchZi = np.array([[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]])
 
 init = True
 
-#Buterworth filter
+#Butterworth lowpass filter
 N  = 5    # Filter order
-fk = 20
+fk = 30
 Wn = fk/(fs/2) # Cutoff frequency
-B, A = signal.butter(N, Wn, output='ba')
-ZI = np.array([[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]])
+lowpassB, lowpassA = signal.butter(N, Wn, output='ba')
+lowpassZi = np.array([[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]])
+
+#Butterworth bandpass filter
+order = 2
+hc = 40.0/(fs/2) #High cut
+lc = 2.0/(fs/2)	#Low cut
+bandpassB, bandpassA = signal.butter(order, [lc, hc], btype='band', output='ba', analog=False)
+bandpassZi = np.array([[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]])
+
+print(bandpassB)
+print(bandpassA)
 
 print("Filtersetup finished")
 
@@ -113,7 +128,7 @@ def printData(sample):
 
 			if filtering:
 				averagedata[i].append(sample.channel_data[i]-average)
-
+				#averagedata[i].append(sample.channel_data[i])
 			else:
 				data[i].append((sample.channel_data[i]-average) * df)
 				
@@ -122,7 +137,7 @@ def printData(sample):
 				data[i].pop(0)
 				
 				
-		if len(rawdata[0]) > 500:
+		if len(rawdata[0]) > 2000:
 			for i in range(nPlots):
 				rawdata[i].pop(0)
 
@@ -135,36 +150,36 @@ def appendData(y, i):
 		data[i].append(y[j]*df)
 
 def notchFilter():
-	global b, a, zi, averagedata, data, window, init, bandstopFilter, lowpassFilter, B, A, ZI
+	global lowpassB, lowpassA, lowpassZi 
+	global bandpassB, bandpassA, bandpassZi
+	global notchB, notchA, notchZi 
+	global averagedata, data, window, init
+	global bandstopFilter, lowpassFilter, bandpassFilter
+	
 	with(mutex):
 
 		for i in range(nPlots):
 			if init == True: #Gjor dette til en funksjon, input koeff, return zi
-				zi[i] = signal.lfilter_zi(b, a) * averagedata[i][0]
-				ZI[i] = signal.lfilter_zi(B, A) * averagedata[i][0]
+				notchZi[i] = signal.lfilter_zi(notchB, notchA) * averagedata[i][0]
+				lowpassZi[i] = signal.lfilter_zi(lowpassB, lowpassA) * averagedata[i][0]
+				bandpassZi[i] = signal.lfilter_zi(bandpassB, bandpassA) * averagedata[i][0]
 				init = False
 
-		if bandstopFilter and not lowpassFilter:
-			for i in range(nPlots):
-				y, zi[i] = signal.lfilter(b, a, averagedata[i], zi=zi[i])
-				appendData(y,i)
+		for i in range(nPlots):
+			x = averagedata[i]
 
-		elif lowpassFilter and not bandstopFilter:
-			for i in range(nPlots):
-				y, ZI[i] = signal.lfilter(B, A, averagedata[i], zi=ZI[i])
-				appendData(y,i)
+			if bandstopFilter:
+				x, notchZi[i] = signal.lfilter(notchB, notchA, x, zi=notchZi[i])
 
-		elif lowpassFilter and bandstopFilter:
-			for i in range(nPlots):
-				x, zi[i] = signal.lfilter(b, a, averagedata[i], zi=zi[i])
-				y, ZI[i] = signal.lfilter(B, A, x, zi=ZI[i])
-				appendData(y,i)
+			if lowpassFilter:
+				x, lowpassZi[i] = signal.lfilter(lowpassB, lowpassA, x, zi=lowpassZi[i])
+				
+			if bandpassFilter:
+				x, bandpassZi[i] = signal.lfilter(bandpassB, bandpassA, x, zi=bandpassZi[i])
 
-		else:
-			for i in range(nPlots):
-				y[i] = averagedata[i]
-				appendData(y,i)
-		
+			appendData(x,i)
+
+
 		averagedata = [],[],[],[],[],[],[],[]
 
 
@@ -190,7 +205,7 @@ def update():
 
 def keys():
 
-	global board, bandstopFilter, filtering, lowpassFilter
+	global board, bandstopFilter, filtering, lowpassFilter, bandpassFilter
 	while True:
 		string = raw_input()
 		if string == "notch=true":
@@ -207,7 +222,10 @@ def keys():
 			lowpassFilter = True
 		elif string == "lowpass=false":
 			lowpassFilter = False
-
+		elif string == "bandpass=true":
+			bandpassFilter = True
+		elif string == "bandpass=false":
+			bandpassFilter = False
 		elif string == "exit":
 			print("Initiating exit sequence")
 			board.stop()
