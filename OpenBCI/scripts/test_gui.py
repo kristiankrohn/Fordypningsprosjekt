@@ -11,6 +11,9 @@ import threading
 from threading import Lock
 from scipy import signal
 import matplotlib.pyplot as plt
+
+
+
 mutex = Lock()
 
 #Helmetsetup
@@ -79,7 +82,7 @@ notchB, notchA = signal.iirnotch(w0, Q)
 filtering = True
 bandstopFilter = True
 lowpassFilter = False
-bandpassFilter = True
+bandpassFilter = False
 
 
 sample = board._read_serial_binary()
@@ -96,8 +99,8 @@ lowpassZi = np.array([[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0
 
 #Butterworth bandpass filter
 order = 2
-hc = 40.0/(fs/2) #High cut
-lc = 2.0/(fs/2)	#Low cut
+hc = 100.0/(fs/2) #High cut
+lc = 1.0/(fs/2)	#Low cut
 bandpassB, bandpassA = signal.butter(order, [lc, hc], btype='band', output='ba', analog=False)
 bandpassZi = np.array([[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]])
 
@@ -130,14 +133,14 @@ def printData(sample):
 				averagedata[i].append(sample.channel_data[i]-average)
 				#averagedata[i].append(sample.channel_data[i])
 			else:
-				data[i].append((sample.channel_data[i]-average) * df)
+				data[i].append(sample.channel_data[i]-average)
 				
 		if len(data[0]) >= 2000:
 			for i in range(nPlots):
 				data[i].pop(0)
 				
 				
-		if len(rawdata[0]) > 2000:
+		if len(rawdata[0]) > 1000:
 			for i in range(nPlots):
 				rawdata[i].pop(0)
 
@@ -169,20 +172,27 @@ def notchFilter():
 			x = averagedata[i]
 
 			if bandstopFilter:
-				x, notchZi[i] = signal.lfilter(notchB, notchA, x, zi=notchZi[i])
+				#x, notchZi[i] = signal.lfilter(notchB, notchA, x, zi=notchZi[i])
+				x = signal.filtfilt(notchB, notchA, x, irlen = 74)
 
 			if lowpassFilter:
-				x, lowpassZi[i] = signal.lfilter(lowpassB, lowpassA, x, zi=lowpassZi[i])
+				#x, lowpassZi[i] = signal.lfilter(lowpassB, lowpassA, x, zi=lowpassZi[i])
+				x = signal.filtfilt(lowpassB, lowpassA, x, irlen = 74)
 				
 			if bandpassFilter:
-				x, bandpassZi[i] = signal.lfilter(bandpassB, bandpassA, x, zi=bandpassZi[i])
+				#x, bandpassZi[i] = signal.lfilter(bandpassB, bandpassA, x, zi=bandpassZi[i])
+				x = signal.filtfilt(bandpassB, bandpassA, x, irlen = 74)
 
 			appendData(x,i)
 
 
 		averagedata = [],[],[],[],[],[],[],[]
 
-
+def plot():
+	for i in range(2):
+		plt.plot(data[i])
+	plt.ylabel('uV')
+	plt.show()
 
 def update():
 	global curve, data, ptr, p, lastTime, fps, nPlots, count, board
@@ -232,7 +242,8 @@ def keys():
 			board.disconnect()
 			QtGui.QApplication.quit()
 			sys.exit()
-
+		elif string == "plot":
+			plot()
 
 
 def main():
