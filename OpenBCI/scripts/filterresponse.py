@@ -11,14 +11,14 @@ fs = 250.0
 #b, a = signal.iirnotch(w0, Q)
 
 nyq_rate = fs / 2.0
-N = 99
+N = 151
 
 # The cutoff frequency of the filter.
 cutoff_hz = 3.0
 
 # Use firwin with a Kaiser window to create a lowpass FIR filter.
 #a = firwin(N, cutoff_hz/nyq_rate, pass_zero=False, window = 'hann')
-a = firwin(N, [cutoff_hz/nyq_rate, 30/nyq_rate], pass_zero=False, window = 'hann')
+a = firwin(N, [cutoff_hz/nyq_rate, 45/nyq_rate], pass_zero=False, window = 'hann')
 #a = -a
 #a[n/2] = a[n/2] + 1
 #N  = 30    # Filter order
@@ -50,7 +50,7 @@ ax[1].plot(freq, np.unwrap(np.angle(h))*180/np.pi, color='green')
 ax[1].set_ylabel("Angle (degrees)", color='green')
 ax[1].set_xlabel("Frequency (Hz)")
 ax[1].set_xlim([0, 100])
-ax[1].set_yticks([-7560, -6480, -5400, -4320, -3240, -2160, -1080, 0])
-ax[1].set_ylim([-8000, 90])
+ax[1].set_yticks([-7560, -6480, -5400, -4320, -3240, -2160, -1080, 0, 1080])
+ax[1].set_ylim([-3500, 1080])
 ax[1].grid()
 plt.show()
