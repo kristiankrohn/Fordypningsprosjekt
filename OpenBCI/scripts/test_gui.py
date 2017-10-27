@@ -13,7 +13,7 @@ from scipy import signal
 import matplotlib.pyplot as plt
 from numpy.random import randn
 
-z = randn(2000)
+#z = randn(2000)
 #legends = []
 #for i in range(2):
 	#label = "Fp %d" %(i+1)
@@ -49,7 +49,7 @@ print("Samplerate: %0.2fHz" %board.getSampleRate())
 app = QtGui.QApplication([])
 p = pg.plot()
 nPlots = 8
-nSamples = 500
+nSamples = 2000
 p.setWindowTitle('pyqtgraph example: MultiPlotSpeedTest')
 #p.setRange(QtCore.QRectF(0, -10, 5000, 20)) 
 p.setLabel('bottom', 'Index', units='B')
@@ -75,7 +75,7 @@ for i in range(nPlots):
 #p.setYRange(0, nPlots*6)
 p.setYRange(0, nPlots*100)
 p.setXRange(0, nSamples)
-p.resize(1000,1000)
+p.resize(nSamples,1000)
 
 
 
@@ -85,6 +85,7 @@ print("Graphsetup finished")
 #Filtersetup
 #Notchfilter
 window = 150
+
 fs = 250.0
 f0 = 50.0
 Q = 50
@@ -95,7 +96,7 @@ notchB, notchA = signal.iirnotch(w0, Q)
 filtering = True
 bandstopFilter = True
 lowpassFilter = False
-bandpassFilter = False
+bandpassFilter = True
 
 
 sample = board._read_serial_binary()
@@ -112,18 +113,19 @@ lowpassB, lowpassA = signal.butter(N, Wn, output='ba')
 lowpassZi = np.zeros([8,N])
 #Butterworth bandpass filter
 order = 2
-hc = 100.0/(fs/2) #High cut
-lc = 1.0/(fs/2)	#Low cut
+hc = 30.0/(fs/2) #High cut
+lc = 3.0/(fs/2)	#Low cut
 #bandpassB, bandpassA = signal.butter(order, [lc, hc], btype='band', output='ba', analog=False)
 #bandpassZi = np.array([[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]])
 
 #FIR Highpass
-cutoff_hz = 1.0
+cutoff_hz = 2.0
 nyq_rate = fs/2
 # Use firwin with a Kaiser window to create a lowpass FIR filter.
-bandpassB = signal.firwin(window-1, cutoff_hz/nyq_rate, pass_zero=False, window = 'hann')
+#bandpassB = signal.firwin(window-1, cutoff_hz/nyq_rate, pass_zero=False, window = 'hann') #Highpass
+bandpassB = signal.firwin(N, [lc, hc], pass_zero=False, window = 'hann') #Bandpass
 bandpassA = 1.0 #np.ones(len(bandpassA))
-bandpassZi = np.zeros([8, window-2])
+bandpassZi = np.zeros([8, 4])
 print("Filtersetup finished")
 
 
@@ -152,12 +154,12 @@ def printData(sample):
 			else:
 				data[i].append(sample.channel_data[i])
 				
-		if len(data[0]) >= 2000:
+		if len(data[0]) >= nSamples:
 			for i in range(nPlots):
 				data[i].pop(0)
 				
 				
-		if len(rawdata[0]) > 1000:
+		if len(rawdata[0]) > 2000:
 			for i in range(nPlots):
 				rawdata[i].pop(0)
 
@@ -288,8 +290,14 @@ def keys():
 			sys.exit()
 		elif string == "plot":
 			plot()
+			#plotThread = threading.Thread(target=plot,args=())
+			#plotThread.start()
+			#plotthread.join()
 		elif string == "plotall":
 			plotAll()
+			#plotAllThread = threading.Thread(target=plotAll,args=())
+			#plotAllThread.start()
+			#plotAllThread.join()
 
 def main():
 
