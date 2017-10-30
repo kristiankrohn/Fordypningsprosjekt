@@ -12,7 +12,7 @@ from threading import Lock
 from scipy import signal
 import matplotlib.pyplot as plt
 from numpy.random import randn
-
+import tkinter
 
 mutex = Lock()
 
@@ -183,6 +183,7 @@ def notchFilter():
 			x, notchZi[i] = signal.lfilter(notchB, notchA, x, zi=notchZi[i])
 			x, highpassZi[i] = signal.lfilter(highpassB, highpassA, x, zi=highpassZi[i])
 			appendData(x,i+2)
+
 		for i in range (2):
 			x = averagedata[i+4]
 			x, notchZi[i+2] = signal.lfilter(notchB, notchA, x, zi=notchZi[i+2])
@@ -296,6 +297,15 @@ def keys():
 			#plotAllThread.start()
 			#plotAllThread.join()
 
+def gui():
+	root = Tk()
+
+	w = Label(root, text="Hello Tkinter!")
+	w.pack()
+
+	root.mainloop()	
+
+
 def main():
 
 	mw = QtGui.QMainWindow()
@@ -307,10 +317,12 @@ def main():
 
 	print("Setup finished, starting threads")
 
-	thread0 = threading.Thread(target=keys,args=())
-	thread1 = threading.Thread(target=dataCatcher,args=())
-	thread0.start()
-	thread1.start()	
+	threadKeys = threading.Thread(target=keys,args=())
+	threadDataCatcher = threading.Thread(target=dataCatcher,args=())
+	threadGui = threading.Thread(target=gui, args=())
+	threadKeys.start()
+	threadDataCatcher.start()
+	threadGui.start()	
 	
 	#thread2 = threading.Thread(target=QtGui.QApplication.instance().exec_(),args=())
 
