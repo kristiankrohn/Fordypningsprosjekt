@@ -11,58 +11,84 @@ import threading
 from threading import Lock
 from scipy import signal
 import matplotlib.pyplot as plt
-from numpy.random import randint
-import Tkinter as tk
-import testtkinter as ttk
-from globalvar import *
-#z = randn(2000)
-#legends = []
-#for i in range(2):
-	#label = "Fp %d" %(i+1)
-	#print(label)
-	#label = tuple([label])
-	#legend, = plt.plot(z, label=label)
-	#legends.append(legend)
-#plt.ylabel('uV')
-#plt.xlabel('Sample')
-#plt.legend(handles=legends)
-#legends = []
-#plt.show()
+from numpy.random import randn
+
 
 mutex = Lock()
-board = None
-root = None
-graphVar = False
-nPlots = 8
+
+#Helmetsetup
+port = 'COM6'
+baud = 115200
+logging.basicConfig(filename="test.log",format='%(asctime)s - %(levelname)s : %(message)s',level=logging.DEBUG)
+logging.info('---------LOG START-------------')
+board = bci.OpenBCIBoard(port=port, scaled_output=True, log=True, filter_data = False)
+print("Board Instantiated")
+board.ser.write('v')
+#tme.sleep(10)
+
+if not board.streaming:
+	board.ser.write(b'b')
+	board.streaming = True
+
+print("Samplerate: %0.2fHz" %board.getSampleRate())
+
+#Graph setup
+app = QtGui.QApplication([])
+p = pg.plot()
+nPlots = 6
 nSamples = 1800
-count = None
+p.setWindowTitle('pyqtgraph example: MultiPlotSpeedTest')
+#p.setRange(QtCore.QRectF(0, -10, 5000, 20)) 
+p.setLabel('bottom', 'Index', units='B')
+#curves = [p.plot(pen=(i,nPlots*1.3)) for i in range(nPlots)]
+
+curves = []
+ptr = 0
+lastTime = time()
+fps = None
+count = 0
+data = [],[],[],[],[],[],[],[]
+rawdata = [],[],[],[],[],[],[],[]
+averagedata = [],[],[],[],[],[],[],[]
+displayUV = []
+df = 1
+
+for i in range(nPlots):
+	c = pg.PlotCurveItem(pen=(i,nPlots*1.3))
+	p.addItem(c)
+	c.setPos(0,i*100+200)
+	curves.append(c)
+
+#p.setYRange(0, nPlots*6)
+p.setYRange(0, nPlots*100)
+p.setXRange(0, nSamples)
+p.resize(nSamples,1000)
+
+
+
+print("Graphsetup finished")
+
+
 #Filtersetup
 #Notchfilter
 window = 151
-curves = []
-ptr = 0
-#data = [],[],[],[],[],[],[],[]
 
-rawdata = [],[],[],[],[],[],[],[]
-averagedata = [],[],[],[],[],[],[],[]
-p = None
-
-init = True
-exit = False
-filtering = True
-bandstopFilter = False
-lowpassFilter = False
-bandpassFilter = True
-app = QtGui.QApplication([])
 fs = 250.0
 f0 = 50.0
 Q = 50
 w0 = f0/(fs/2)
 notchB, notchA = signal.iirnotch(w0, Q) 
 
-#sample = board._read_serial_binary()
-notchZi = np.zeros([8,2])
 
+filtering = True
+bandstopFilter = False
+lowpassFilter = False
+bandpassFilter = True
+
+
+sample = board._read_serial_binary()
+notchZi = np.zeros([8,2])
+init = True
 
 #Butterworth lowpass filter
 N  = 4    # Filter order
@@ -79,38 +105,15 @@ lc = 5.0/(fs/2)	#Low cut
 bandpassB = signal.firwin(window, [lc, hc], pass_zero=False, window = 'hann') #Bandpass
 bandpassA = 1.0 #np.ones(len(bandpassA))
 bandpassZi = np.zeros([8, window-1])
+
+highpassB = signal.firwin(window, lc, pass_zero=False, window = 'hann') #Bandpass
+highpassA = 1.0
+highpassZi = np.zeros([8, window-1])
 print("Filtersetup finished")
-
-
-
-
-
-
-#GUI parameters
-#size = 1000
-#speed = 20
-#ballsize = 30
-
 
 
 def dataCatcher():
 	global board
-	#Helmetsetup
-	port = 'COM6'
-	baud = 115200
-	logging.basicConfig(filename="test.log",format='%(asctime)s - %(levelname)s : %(message)s',level=logging.DEBUG)
-	logging.info('---------LOG START-------------')
-	board = bci.OpenBCIBoard(port=port, scaled_output=True, log=True, filter_data = False)
-	print("Board Instantiated")
-	board.ser.write('v')
-	#tme.sleep(10)
-
-	if not board.streaming:
-		board.ser.write(b'b')
-		board.streaming = True
-
-	print("Samplerate: %0.2fHz" %board.getSampleRate())
-
 	board.start_streaming(printData)
 
 
@@ -144,60 +147,78 @@ def printData(sample):
 				rawdata[i].pop(0)
 
 		if len(averagedata[0]) >= window:					
-			threadFilter = threading.Thread(target=filter,args=())
-			threadFilter.setDaemon(True)
+			threadFilter = threading.Thread(target=notchFilter,args=())
 			threadFilter.start()
 
 def appendData(y, i):
 	for j in range(len(y)):
-		data[i].append(y[j])
+		data[i].append(y[j]*df)
 
-def filter():
+def notchFilter():
+	global highpassB, highpassA, highpassZi
 	global lowpassB, lowpassA, lowpassZi 
 	global bandpassB, bandpassA, bandpassZi
 	global notchB, notchA, notchZi 
 	global averagedata, data, window, init, initNotch, initLowpass, initBandpass
 	global bandstopFilter, lowpassFilter, bandpassFilter
-
+	
 	with(mutex):
 		
 		if init == True: #Gjor dette til en funksjon, input koeff, return zi
-			
 			for i in range(nPlots):
 				notchZi[i] = signal.lfilter_zi(notchB, notchA) * averagedata[i][0]
 				lowpassZi[i] = signal.lfilter_zi(lowpassB, lowpassA) * averagedata[i][0]
 				bandpassZi[i] = signal.lfilter_zi(bandpassB, bandpassA) * averagedata[i][0]
+				highpassZi[i] = signal.lfilter_zi(highpassB, highpassA) * averagedata[i][0]
 			init = False
 
 			#TODO: init filters again when turned on
-		for i in range(nPlots):
+		for i in range(2):
 			x = averagedata[i]
-
-			if bandstopFilter:
-				x, notchZi[i] = signal.lfilter(notchB, notchA, x, zi=notchZi[i])
-
-			if lowpassFilter:
-				x, lowpassZi[i] = signal.lfilter(lowpassB, lowpassA, x, zi=lowpassZi[i])
-			
-			if bandpassFilter:
-				x, bandpassZi[i] = signal.lfilter(bandpassB, bandpassA, x, zi=bandpassZi[i])
-
-
+			x, bandpassZi[i] = signal.lfilter(bandpassB, bandpassA, x, zi=bandpassZi[i])	
 			appendData(x,i)
-
-
-		averagedata = [],[],[],[],[],[],[],[]
 		
+		for i in range(2):
+			x = averagedata[i+2]
+			x, notchZi[i] = signal.lfilter(notchB, notchA, x, zi=notchZi[i])
+			x, highpassZi[i] = signal.lfilter(highpassB, highpassA, x, zi=highpassZi[i])
+			appendData(x,i+2)
+		for i in range (2):
+			x = averagedata[i+4]
+			x, notchZi[i+2] = signal.lfilter(notchB, notchA, x, zi=notchZi[i+2])
+			appendData(x,i+4)
+		averagedata = [],[],[],[],[],[],[],[]
+
 def plot():
 	legends = []
+	plt.figure(1)
 	for i in range(2):
-		label = "Fp %d" %(i+1)
+		label = "BP Fp %d" %(i+1)
 		#print(label)
 		#label = tuple([label])
+		plt.subplot(311)
 		legend, = plt.plot(data[i], label=label)
 		legends.append(legend)
+
+	for i in range(2):
+		label = "Notch + HP Fp %d" %(i+1)
+		#print(label)
+		#label = tuple([label])
+		plt.subplot(312)
+		legend, = plt.plot(data[i+2], label=label)
+		legends.append(legend)
+
+	for i in range(2):
+		label = "Notch Fp %d" %(i+1)
+		#print(label)
+		#label = tuple([label])
+		plt.subplot(313)
+		legend, = plt.plot(data[i+4], label=label)
+		legends.append(legend)
+
 	plt.ylabel('uV')
 	plt.xlabel('Sample')
+	#TODO: x axis in seconds
 	plt.legend(handles=legends)
 	legends = []
 	plt.show()
@@ -217,7 +238,7 @@ def plotAll():
 	plt.show()
 
 def update():
-	global curves, data, ptr, p, lastTime, fps, nPlots, count, board
+	global curve, data, ptr, p, lastTime, fps, nPlots, count, board
 	count += 1
 	string = ""
 	with(mutex):
@@ -228,59 +249,16 @@ def update():
 				string += ' = %0.2f uV ' % data[i][-1]
 
 	ptr += nPlots
-	#now = time()
-	#dt = now - lastTime	
-	#lastTime = now
+	now = time()
+	dt = now - lastTime	
+	lastTime = now
 
 	p.setTitle(string)
     #app.processEvents()  ## force complete redraw for every plot
 
-def graph():
-	#Graph setup
-	global nPlots, nSamples, count, data, curves, p, QtGui, app
-	#app = QtGui.QApplication([])
-	p = pg.plot()
-
-	p.setWindowTitle('pyqtgraph example: MultiPlotSpeedTest')
-	#p.setRange(QtCore.QRectF(0, -10, 5000, 20)) 
-	p.setLabel('bottom', 'Index', units='B')
-	#curves = [p.plot(pen=(i,nPlots*1.3)) for i in range(nPlots)]
-
-	
-	
-	lastTime = time()
-	fps = None
-	count = 0
-
-	displayUV = []
-	df = 1
-
-	for i in range(nPlots):
-		c = pg.PlotCurveItem(pen=(i,nPlots*1.3))
-		p.addItem(c)
-		c.setPos(0,i*100+200)
-		curves.append(c)
-
-	#p.setYRange(0, nPlots*6)
-	p.setYRange(0, nPlots*100)
-	p.setXRange(0, nSamples)
-	p.resize(nSamples,1000)
-
-	mw = QtGui.QMainWindow()
-	mw.resize(800,800)
-	
-	timer = QtCore.QTimer()
-	timer.timeout.connect(update)
-	timer.start(0)
-
-	print("Graphsetup finished")
-	
-	QtGui.QApplication.instance().exec_()
-
-
 def keys():
 
-	global board, bandstopFilter, filtering, lowpassFilter, bandpassFilter, graphVar
+	global board, bandstopFilter, filtering, lowpassFilter, bandpassFilter
 	while True:
 		string = raw_input()
 		if string == "notch=true":
@@ -303,19 +281,10 @@ def keys():
 			bandpassFilter = False
 		elif string == "exit":
 			print("Initiating exit sequence")
-			exit = True
-			if root != None:
-				root.destroy()
-			#print("Quit gui")
-			if QtGui != None:
-				QtGui.QApplication.quit()
-			#print("Quit Graph")
-			if board != None:
-				print("Closing board")
-				board.stop()
-				board.disconnect()
-			#print("Quit board")
-			os._exit(0)
+			board.stop()
+			board.disconnect()
+			QtGui.QApplication.quit()
+			sys.exit()
 		elif string == "plot":
 			plot()
 			#plotThread = threading.Thread(target=plot,args=())
@@ -326,41 +295,22 @@ def keys():
 			#plotAllThread = threading.Thread(target=plotAll,args=())
 			#plotAllThread.start()
 			#plotAllThread.join()
-		elif string == "save":
-			save()
-		#elif string == "start":
-			#threadDataCatcher = threading.Thread(target=dataCatcher,args=())
-			#threadDataCatcher.setDaemon(True)
-			#threadDataCatcher.start()
-		elif string == "graph":
-			graphVar = True
-
-		elif string == "gui":
-			threadGui = threading.Thread(target=gui, args=())
-			threadGui.setDaemon(True)
-			threadGui.start()
-def save():
-	np.savetxt('data.out', data[1])
-
-def gui():
-	ttk.guiloop()
-
-
 
 def main():
-	global graphVar, exit
+
+	mw = QtGui.QMainWindow()
+	mw.resize(800,800)
+	
+	timer = QtCore.QTimer()
+	timer.timeout.connect(update)
+	timer.start(0)
 
 	print("Setup finished, starting threads")
 
-	threadKeys = threading.Thread(target=keys,args=())
-	threadKeys.setDaemon(True)
-	threadKeys.start()
-	threadDataCatcher = threading.Thread(target=dataCatcher,args=())
-	threadDataCatcher.setDaemon(True)
-	threadDataCatcher.start()
-	#threadGui = threading.Thread(target=gui, args=())
-	#threadGui.setDaemon(True)
-	#threadGui.start()
+	thread0 = threading.Thread(target=keys,args=())
+	thread1 = threading.Thread(target=dataCatcher,args=())
+	thread0.start()
+	thread1.start()	
 	
 	#thread2 = threading.Thread(target=QtGui.QApplication.instance().exec_(),args=())
 
@@ -369,15 +319,11 @@ def main():
 	#thread0.join()
 	#thread1.join()
 	#thread2.join()
-
-	while not graphVar:
-		pass
-
-	if not exit:
-		graph()	
+	
+	QtGui.QApplication.instance().exec_()
 
 	
-	print("Penis")
+
 
 if __name__ == '__main__':
 	main()
