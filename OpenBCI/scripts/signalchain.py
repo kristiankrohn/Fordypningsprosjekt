@@ -35,7 +35,7 @@ print("Samplerate: %0.2fHz" %board.getSampleRate())
 #Graph setup
 app = QtGui.QApplication([])
 p = pg.plot()
-nPlots = 6
+nPlots = 8
 nSamples = 2000
 p.setWindowTitle('pyqtgraph example: MultiPlotSpeedTest')
 #p.setRange(QtCore.QRectF(0, -10, 5000, 20)) 
@@ -49,7 +49,7 @@ fps = None
 count = 0
 data = [],[],[],[],[],[],[],[]
 rawdata = [],[],[],[],[],[],[],[]
-averagedata = [],[],[],[],[],[],[],[]
+averagedata = [],[],[],[],[],[],[],[],[]
 displayUV = []
 df = 1
 
@@ -131,13 +131,18 @@ def printData(sample):
 
 			average = avg / (len(rawdata[0]))
 
+			#if i == 0:
+				#data[i].append(sample.channel_data[i])
 			if filtering:
 				averagedata[i].append(sample.channel_data[i]-average)
-				#averagedata[i].append(sample.channel_data[i])
+				if i == 0:
+					averagedata[8].append(sample.channel_data[i])
+
 			else:
 				data[i].append(sample.channel_data[i])
 				
-		if len(data[0]) >= nSamples:
+		if len(data[1]) >= nSamples:
+			#print(data)
 			for i in range(nPlots):
 				data[i].pop(0)
 				
@@ -171,61 +176,132 @@ def notchFilter():
 				bandpassZi[i] = signal.lfilter_zi(bandpassB, bandpassA) * averagedata[i][0]
 				highpassZi[i] = signal.lfilter_zi(highpassB, highpassA) * averagedata[i][0]
 			init = False
-
+		appendData(averagedata[8],0)
+		appendData(averagedata[0],1)
 			#TODO: init filters again when turned on
-		for i in range(2):
+		for i in range(1):
 			x = averagedata[i]
 			x, bandpassZi[i] = signal.lfilter(bandpassB, bandpassA, x, zi=bandpassZi[i])	
-			appendData(x,i)
+			appendData(x,i+5)
 		
-		for i in range(2):
-			x = averagedata[i+2]
+		for i in range(1):
+			x = averagedata[i]
 			x, notchZi[i] = signal.lfilter(notchB, notchA, x, zi=notchZi[i])
 			x, highpassZi[i] = signal.lfilter(highpassB, highpassA, x, zi=highpassZi[i])
+			appendData(x,i+4)
+
+		for i in range(1):
+			x = averagedata[i]
+			x, highpassZi[i+2] = signal.lfilter(highpassB, highpassA, x, zi=highpassZi[i+2])
+			appendData(x,i+3)
+
+		for i in range (1):
+			x = averagedata[i]
+			x, notchZi[i+2] = signal.lfilter(notchB, notchA, x, zi=notchZi[i+2])
 			appendData(x,i+2)
 
-		for i in range (2):
-			x = averagedata[i+4]
-			x, notchZi[i+2] = signal.lfilter(notchB, notchA, x, zi=notchZi[i+2])
-			appendData(x,i+4)
-		averagedata = [],[],[],[],[],[],[],[]
+		for i in range(1):
+			x = averagedata[8]
+			x, bandpassZi[i+2] = signal.lfilter(bandpassB, bandpassA, x, zi=bandpassZi[i+2])	
+			appendData(x,i+6)
+
+		for i in range(1):
+			x = averagedata[8]
+			x, notchZi[i+4] = signal.lfilter(notchB, notchA, x, zi=notchZi[i+4])
+			x, highpassZi[i+4] = signal.lfilter(highpassB, highpassA, x, zi=highpassZi[i+4])
+			appendData(x,i+7)
+		averagedata = [],[],[],[],[],[],[],[],[]
 
 def plot():
 	with(mutex):
+		#while len(data[0]) > nSamples:
+			#data[0].pop(0)
+		#while len(data[6]) > nSamples:
+			#data[6].pop(0)
+		#while len(data[7]) > nSamples:
+			#data[7].pop(0)
+		for i in range(nPlots):
+			print(len(data[i]))
+
 		while len(data[0]) > nSamples:
-				for i in range(nPlots):
-					data[i].pop(0)
+			for i in range(nPlots):
+				data[i].pop(0)
 		legends = []
 		plt.figure(1)
 		x = np.arange(0, len(data[1])/fs, 1/fs)
 		
-		for i in range(2):
+		for i in range(1):
 			label = "Fp %d" %(i+1)
 			#print(label)
 			#label = tuple([label])
-			ax1 = plt.subplot(311)
+			ax1 = plt.subplot(421)
 			legend, = plt.plot(x, data[i], label=label)
 			legends.append(legend)
-		ax1.set_title("Bandpass")
+		ax1.set_title("Raw data")
 		plt.legend(handles=legends)
 		#ax1.ylabel('uV')
-		for i in range(2):
+		for i in range(1):
 			label = "Notch + HP Fp %d" %(i+1)
 			#print(label)
 			#label = tuple([label])
-			ax2 = plt.subplot(312)
-			legend, = plt.plot(x, data[i+2], label=label)
+			ax2 = plt.subplot(422)
+			legend, = plt.plot(x, data[i+1], label=label)
 			#legends.append(legend)
-		ax2.set_title("Notch + Highpass")
+		ax2.set_title("Average")
 		#ax2.ylabel('uV')
-		for i in range(2):
+		for i in range(1):
 			label = "Notch Fp %d" %(i+1)
 			#print(label)
 			#label = tuple([label])
-			ax3 = plt.subplot(313)
+			ax3 = plt.subplot(423)
+			legend, = plt.plot(x, data[i+2], label=label)
+			#legends.append(legend)
+		ax3.set_title("Notch + average")
+
+		for i in range(1):
+			label = "Notch Fp %d" %(i+1)
+			#print(label)
+			#label = tuple([label])
+			ax4 = plt.subplot(424)
+			legend, = plt.plot(x, data[i+3], label=label)
+			#legends.append(legend)
+		ax4.set_title("Highpass + average")
+
+		for i in range(1):
+			label = "Notch Fp %d" %(i+1)
+			#print(label)
+			#label = tuple([label])
+			ax5 = plt.subplot(425)
 			legend, = plt.plot(x, data[i+4], label=label)
 			#legends.append(legend)
-		ax3.set_title("Notch")
+		ax5.set_title("Highpass + notch + average")
+
+		for i in range(1):
+			label = "Notch Fp %d" %(i+1)
+			#print(label)
+			#label = tuple([label])
+			ax6 = plt.subplot(426)
+			legend, = plt.plot(x, data[i+5], label=label)
+			#legends.append(legend)
+		ax6.set_title("Bandpass + average")
+
+		for i in range(1):
+			label = "Notch Fp %d" %(i+1)
+			#print(label)
+			#label = tuple([label])
+			ax7 = plt.subplot(427)
+			legend, = plt.plot(x, data[i+6], label=label)
+			#legends.append(legend)
+		ax7.set_title("Highpass + Notch")
+
+		for i in range(1):
+			label = "Notch Fp %d" %(i+1)
+			#print(label)
+			#label = tuple([label])
+			ax8 = plt.subplot(428)
+			legend, = plt.plot(x, data[i+7], label=label)
+			#legends.append(legend)
+		ax8.set_title("Bandpass")
 		#ax3.ylabel('uV')
 	plt.ylabel('uV')
 	plt.xlabel('Seconds')

@@ -62,8 +62,8 @@ notchB, notchA = signal.iirnotch(w0, Q)
 
 #sample = board._read_serial_binary()
 notchZi = np.zeros([8,2])
-
-
+#print(notchB)
+#print(notchA)
 #Butterworth lowpass filter
 N  = 4    # Filter order
 fk = 30
@@ -79,9 +79,11 @@ lc = 5.0/(fs/2)	#Low cut
 bandpassB = signal.firwin(window, [lc, hc], pass_zero=False, window = 'hann') #Bandpass
 bandpassA = 1.0 #np.ones(len(bandpassA))
 bandpassZi = np.zeros([8, window-1])
+#print(bandpassB)
+
 print("Filtersetup finished")
 
-
+#np.savetxt('bandpasscoeff.out', bandpassB)
 
 
 
@@ -189,15 +191,20 @@ def filter():
 		averagedata = [],[],[],[],[],[],[],[]
 		
 def plot():
-	legends = []
-	for i in range(2):
-		label = "Fp %d" %(i+1)
-		#print(label)
-		#label = tuple([label])
-		legend, = plt.plot(data[i], label=label)
-		legends.append(legend)
+	with(mutex):
+		while len(data[0]) > nSamples:
+				for i in range(nPlots):
+					data[i].pop(0)
+		x = np.arange(0, len(data[1])/fs, 1/fs)
+		legends = []
+		for i in range(2):
+			label = "Fp %d" %(i+1)
+			#print(label)
+			#label = tuple([label])
+			legend, = plt.plot(x, data[i], label=label)
+			legends.append(legend)
 	plt.ylabel('uV')
-	plt.xlabel('Sample')
+	plt.xlabel('Seconds')
 	plt.legend(handles=legends)
 	legends = []
 	plt.show()
