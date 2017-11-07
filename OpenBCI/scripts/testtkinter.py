@@ -2,16 +2,21 @@ import Tkinter as tk
 import time as tme
 from numpy.random import randint
 from globalvar import *
+from threading import Lock
+import threading
+mutex = Lock()
 size = 1000
 speed = 30
 ballsize = 30
 startButton = None
 w = None
 root = None
-
+sleeping = False
+startMove = tme.time()
+endMode = tme.time()
 class Alien(object):
     def __init__(self, canvas, *args, **kwargs):
-    	global center, right, left, up, down
+    	global center, right, left, up, down, startSleep
         self.canvas = canvas
         self.id = canvas.create_oval(*args, **kwargs)
         #self.canvas.coords(self.id, [20, 260, 120, 360])
@@ -22,9 +27,10 @@ class Alien(object):
         left = False
         up = False
         down = False
+        startSleep = 0
 
     def move(self):
-    	global size, speed, center, right, left, up, down
+    	global size, speed, center, right, left, up, down, startSleep, sleeping
         x1, y1, x2, y2 = self.canvas.bbox(self.id)
 
         if not center and ((right and (x1 <= (size/2) - ballsize)) 
@@ -34,28 +40,47 @@ class Alien(object):
         	self.vx = 0
         	self.vy = 0
         	center = True
+        	endMove = tme.time()
+        	print("Movementtime= ")
+        	print(endMove - startMove)
 
         	if right:
-        		saveright()
-        		print("Right")
+				threadSave = threading.Thread(target=saveData, args=('right'))
+				threadSave.setDaemon(True)
+				threadSave.start()
+
         	elif left:
-        		saveleft()
-        		print("Left")
+				threadSave = threading.Thread(target=saveData, args=('left'))
+				threadSave.setDaemon(True)
+				threadSave.start()
+
         	elif up:
-        		saveup()
-        		print("Up")
+				threadSave = threading.Thread(target=saveData, args=('up'))
+  				threadSave.setDaemon(True)
+				threadSave.start()
+
         	elif down:
-        		savedown()
-        		print("Down")
+				threadSave = threading.Thread(target=saveData, args=('down'))
+				threadSave.setDaemon(True)
+				threadSave.start()
+
 
         	right = False
         	left = False
         	up = False
         	down = False
-        	tme.sleep(4)
-        	savecenter()
-        	z = randint(0,4)
+        	startSleep = tme.time()
+        	sleeping = True
+        	#tme.sleep(4)
+
+        if sleeping and (tme.time() > startSleep + 5):
+			threadSave = threading.Thread(target=saveData, args=('center'))
+			threadSave.setDaemon(True)
+			threadSave.start()
+			z = randint(0,4)
+			sleeping = False
         	#print(z)
+			startMove = tme.time()
         	if z == 0:
         		self.vx = -speed
         		self.vy = 0
@@ -68,6 +93,8 @@ class Alien(object):
         	else:
         		self.vx = 0
         		self.vy = speed
+
+
         if x2 > size:
             self.vx = 0
             right = True
@@ -134,66 +161,116 @@ def guiloop():
 	#app = App(root)
 	root.mainloop()
 
+def saveData(direction):
+	global data, nSamples
+	length = 100
+	with(mutex):
+		temp = data
+	if len(temp[1]) > length:
+		f = open('data.txt', 'a')
+	
+		if direction == 'left':
+			f.write('l1')
+		elif direction == 'right':
+			f.write('r1')
+		elif direction == 'up':
+			f.write('u1')
+		elif direction == 'down':
+			f.write('d1')
+		elif direction == 'center':
+			f.write('c1')
+		print("New save")
+		start = len(temp[1])-length+5
+		stop = len(temp[1])-5
+		#print(start)
+		#print(stop)
+		for i in range(start, stop):
+			f.write(',')
+			num = temp[1][i]
+			f.write(str(num))
+			#print(i)
+		f.write(':')
+		f.close()
 
 def saveleft():
 	global data, nSamples
 	#print(data[1])
 	f = open('data.txt', 'a')
-	f.write('l1')
-	
-	for i in range(nSamples-750, nSamples):
-		f.write(',')
-		f.write(data[1][i])
+	with(mutex):
+		if len(data[1])>750:
+			f.write('l1')
+			print(len(data[1])-10)
+			print(len(data[1])-1)
+			for i in range(len(data[1])-750, len(data[1])-1):
+				f.write(',')
+				f.write(str(data[1][i]))
+				print(i)
 		
-	f.write(':')
+		f.write(':')
 	f.close()
 def saveright():
 	global data, nSamples
 	#print(data[1])
 	f = open('data.txt', 'a')
-	f.write('r1')
+	with(mutex):
+		if len(data[1])>750:
+			f.write('r1')
+			print(len(data[1])-10)
+			print(len(data[1])-1)
+			for i in range(len(data[1])-750, len(data[1])-1):
+				f.write(',')
+				f.write(str(data[1][i]))
+				print(i)
 	
-	for i in range(nSamples-750, nSamples):
-		f.write(',')
-		f.write(str(data[1][i]))
-		
-	f.write(':')
+		f.write(':')
 	f.close()
 def saveup():
 	global data, nSamples
 	#print(data[1])
 	f = open('data.txt', 'a')
-	f.write('u1')
+	with(mutex):
+		if len(data[1])>750:
+			f.write('u1')
+			print(len(data[1])-10)
+			print(len(data[1])-1)
+			for i in range(len(data[1])-750, len(data[1])-1):
+				f.write(',')
+				f.write(str(data[1][i]))
+				print(i)
 	
-	for i in range(nSamples-750, nSamples):
-		f.write(',')
-		f.write(str(data[1][i]))
-		
-	f.write(':')
+		f.write(':')
 	f.close()
 def savedown():
 	global data, nSamples
 	#print(data[1])
 	f = open('data.txt', 'a')
-	f.write('d1')
-	
-	for i in range(nSamples-750, nSamples):
-		f.write(',')
-		f.write(str(data[1][i]))
-		
-	f.write(':')
+	with(mutex):
+		if len(data[1])>750:
+			f.write('d1')
+			print(len(data[1])-10)
+			print(len(data[1])-1)
+			for i in range(len(data[1])-750, len(data[1])-1):
+				f.write(',')
+				f.write(str(data[1][i]))
+				print(i)
+				
+		f.write(':')
 	f.close()
 def savecenter():
 	global data, nSamples
 	#print(data[1])
 	f = open('data.txt', 'a')
-	f.write('c1')
-	
-	for i in range(nSamples-750, nSamples):
-		f.write(',')
-		f.write(str(data[1][i]))
-		
-	f.write(':')
+	with(mutex):
+		if len(data[1])>750:	
+			f.write('c1')
+			print(len(data[1])-10)
+			print(len(data[1])-1)
+			for i in range(len(data[1])-750, len(data[1])-1):
+				f.write(',')
+				f.write(str(data[1][i]))
+				print(i)
+			
+		f.write(':')
 	f.close()
 
 def openFile():
