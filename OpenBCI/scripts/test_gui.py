@@ -34,7 +34,7 @@ board = None
 root = None
 graphVar = False
 nPlots = 8
-nSamples = 1800
+
 count = None
 #Filtersetup
 #Notchfilter
@@ -62,8 +62,8 @@ notchB, notchA = signal.iirnotch(w0, Q)
 
 #sample = board._read_serial_binary()
 notchZi = np.zeros([8,2])
-#print(notchB)
-#print(notchA)
+print(notchB)
+print(notchA)
 #Butterworth lowpass filter
 N  = 4    # Filter order
 fk = 30
@@ -80,13 +80,13 @@ bandpassB = signal.firwin(window, [lc, hc], pass_zero=False, window = 'hann') #B
 bandpassA = 1.0 #np.ones(len(bandpassA))
 bandpassZi = np.zeros([8, window-1])
 #print(bandpassB)
-
+highpassB = signal.firwin(window, lc, pass_zero=False, window = 'hann') #Bandpass
 print("Filtersetup finished")
 
-#np.savetxt('bandpasscoeff.out', bandpassB)
+np.savetxt('bandpasscoeff.out', bandpassB)
+np.savetxt('highpasscoeff.out', highpassB)
 
-
-
+print("Saved coeff")
 
 #GUI parameters
 #size = 1000
@@ -193,8 +193,8 @@ def filter():
 def plot():
 	with(mutex):
 		while len(data[0]) > nSamples:
-				for i in range(nPlots):
-					data[i].pop(0)
+			for i in range(nPlots):
+				data[i].pop(0)
 		x = np.arange(0, len(data[1])/fs, 1/fs)
 		legends = []
 		for i in range(2):
@@ -346,6 +346,9 @@ def keys():
 			threadGui = threading.Thread(target=gui, args=())
 			threadGui.setDaemon(True)
 			threadGui.start()
+		elif string == "printdata":
+			ttk.openFile()
+
 def save():
 	np.savetxt('data.out', data[1])
 
@@ -384,7 +387,7 @@ def main():
 		graph()	
 
 	
-	print("Penis")
+
 
 if __name__ == '__main__':
 	main()

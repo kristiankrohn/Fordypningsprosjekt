@@ -53,7 +53,7 @@ class Alien(object):
         	up = False
         	down = False
         	tme.sleep(4)
-        	#savecenter()
+        	savecenter()
         	z = randint(0,4)
         	#print(z)
         	if z == 0:
@@ -136,17 +136,80 @@ def guiloop():
 
 
 def saveleft():
-	global data
-	print(data[1])
+	global data, nSamples
+	#print(data[1])
+	f = open('data.txt', 'a')
+	f.write('l1')
+	
+	for i in range(nSamples-750, nSamples):
+		f.write(',')
+		f.write(data[1][i])
+		
+	f.write(':')
+	f.close()
 def saveright():
-	global data
-	print(data[1])
+	global data, nSamples
+	#print(data[1])
+	f = open('data.txt', 'a')
+	f.write('r1')
+	
+	for i in range(nSamples-750, nSamples):
+		f.write(',')
+		f.write(str(data[1][i]))
+		
+	f.write(':')
+	f.close()
 def saveup():
-	global data
-	print(data[1])
+	global data, nSamples
+	#print(data[1])
+	f = open('data.txt', 'a')
+	f.write('u1')
+	
+	for i in range(nSamples-750, nSamples):
+		f.write(',')
+		f.write(str(data[1][i]))
+		
+	f.write(':')
+	f.close()
 def savedown():
-	global data
-	print(data[1])
+	global data, nSamples
+	#print(data[1])
+	f = open('data.txt', 'a')
+	f.write('d1')
+	
+	for i in range(nSamples-750, nSamples):
+		f.write(',')
+		f.write(str(data[1][i]))
+		
+	f.write(':')
+	f.close()
 def savecenter():
-	global data
-	print(data[1])
+	global data, nSamples
+	#print(data[1])
+	f = open('data.txt', 'a')
+	f.write('c1')
+	
+	for i in range(nSamples-750, nSamples):
+		f.write(',')
+		f.write(str(data[1][i]))
+		
+	f.write(':')
+	f.close()
+
+def openFile():
+	
+	file = open('data.txt', 'r')
+	AllData = file.read()
+	DataSet = []
+	DataSet = AllData.split(':')
+	#print(DataSet)
+	for i in range(len(DataSet)):
+		feature = []
+		feature = DataSet[i].split(',')
+		featuretype = feature[0]
+		feature.pop(0)
+		print("Featuretype = ")
+		print(featuretype)
+		print("Featuredata = ")
+		print(feature)
+		#Sort on featuretype and put feature in corresponding array

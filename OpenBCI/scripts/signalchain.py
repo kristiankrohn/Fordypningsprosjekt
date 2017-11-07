@@ -203,13 +203,13 @@ def notchFilter():
 		for i in range(1):
 			x = averagedata[8]
 			x, bandpassZi[i+2] = signal.lfilter(bandpassB, bandpassA, x, zi=bandpassZi[i+2])	
-			appendData(x,i+6)
+			appendData(x,i+7)
 
 		for i in range(1):
 			x = averagedata[8]
 			x, notchZi[i+4] = signal.lfilter(notchB, notchA, x, zi=notchZi[i+4])
 			x, highpassZi[i+4] = signal.lfilter(highpassB, highpassA, x, zi=highpassZi[i+4])
-			appendData(x,i+7)
+			appendData(x,i+6)
 		averagedata = [],[],[],[],[],[],[],[],[]
 
 def plot():
@@ -239,52 +239,60 @@ def plot():
 			legends.append(legend)
 		ax1.set_title("Raw data")
 		plt.legend(handles=legends)
+		plt.ylabel('uV')
+		plt.xlabel('Seconds')
 		#ax1.ylabel('uV')
 		for i in range(1):
-			label = "Notch + HP Fp %d" %(i+1)
+			#label = "Notch + HP Fp %d" %(i+1)
 			#print(label)
 			#label = tuple([label])
-			ax2 = plt.subplot(422)
+			ax2 = plt.subplot(423)
 			legend, = plt.plot(x, data[i+1], label=label)
 			#legends.append(legend)
 		ax2.set_title("Average")
+		plt.ylabel('uV')
+		plt.xlabel('Seconds')
 		#ax2.ylabel('uV')
 		for i in range(1):
 			label = "Notch Fp %d" %(i+1)
 			#print(label)
 			#label = tuple([label])
-			ax3 = plt.subplot(423)
+			ax3 = plt.subplot(425)
 			legend, = plt.plot(x, data[i+2], label=label)
 			#legends.append(legend)
 		ax3.set_title("Notch + average")
-
+		plt.ylabel('uV')
+		plt.xlabel('Seconds')
 		for i in range(1):
 			label = "Notch Fp %d" %(i+1)
 			#print(label)
 			#label = tuple([label])
-			ax4 = plt.subplot(424)
+			ax4 = plt.subplot(422)
 			legend, = plt.plot(x, data[i+3], label=label)
 			#legends.append(legend)
 		ax4.set_title("Highpass + average")
-
+		plt.ylabel('uV')
+		plt.xlabel('Seconds')
 		for i in range(1):
 			label = "Notch Fp %d" %(i+1)
 			#print(label)
 			#label = tuple([label])
-			ax5 = plt.subplot(425)
+			ax5 = plt.subplot(424)
 			legend, = plt.plot(x, data[i+4], label=label)
 			#legends.append(legend)
 		ax5.set_title("Highpass + notch + average")
-
+		plt.ylabel('uV')
+		plt.xlabel('Seconds')
 		for i in range(1):
 			label = "Notch Fp %d" %(i+1)
 			#print(label)
 			#label = tuple([label])
-			ax6 = plt.subplot(426)
+			ax6 = plt.subplot(428)
 			legend, = plt.plot(x, data[i+5], label=label)
 			#legends.append(legend)
 		ax6.set_title("Bandpass + average")
-
+		plt.ylabel('uV')
+		plt.xlabel('Seconds')
 		for i in range(1):
 			label = "Notch Fp %d" %(i+1)
 			#print(label)
@@ -293,12 +301,13 @@ def plot():
 			legend, = plt.plot(x, data[i+6], label=label)
 			#legends.append(legend)
 		ax7.set_title("Highpass + Notch")
-
+		plt.ylabel('uV')
+		plt.xlabel('Seconds')
 		for i in range(1):
 			label = "Notch Fp %d" %(i+1)
 			#print(label)
 			#label = tuple([label])
-			ax8 = plt.subplot(428)
+			ax8 = plt.subplot(426)
 			legend, = plt.plot(x, data[i+7], label=label)
 			#legends.append(legend)
 		ax8.set_title("Bandpass")
