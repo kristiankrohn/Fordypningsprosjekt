@@ -1,0 +1,48 @@
+Hva hvis vi setter punktene på grafen som features istedet for samples? Og at hvert dataset er en sample?
+
+Vi trenger da mange dataset der hvert av dem vil vise en form av en graf som vi kan kategorisere....
+Akkurat som med dataset.iris så tar de en blomst om gangen, det må vi gjøre her også.
+
+dataset 1
+dataset2
+dataset3
+dataset4
+
+der hvert dataset er en type signal. Som mappes til en gitt class (y).
+
+Bruk SVM. 
+
+Trenger MASSE dataset med signaler. siden verdiene ikke vil være det samme hver gang vil dette være mer en greit nok å reprodusere samme signal flere ganger. 
+
+
+
+istedet for::
+
+
+
+
+
+X =    [[1],
+	[5],
+	[3]]
+
+så blir det:
+
+
+X = [[1, 5, 3, ....],
+	[0, 3, 2, 1]
+
+
+
+Bruker SVM og mapper y til riktig signal. 
+X = [[dataset 1],
+	[dataset 2],
+	[dataset 3],
+	[dataset 4],
+]
+	
+
+
+[n_samples, n_features]
+
+[[1]
