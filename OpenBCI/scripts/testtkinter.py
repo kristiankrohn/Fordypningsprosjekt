@@ -204,6 +204,7 @@ def openFile():
 	DataSet = []
 	DataSet = AllData.split(':')
 	#print(DataSet)
+	file.close()
 	for i in range(len(DataSet)):
 		feature = []
 		feature = DataSet[i].split(',')
@@ -214,7 +215,7 @@ def openFile():
 		print("Featuredata = ")
 		print(feature)
 		#Sort on featuretype and put feature in corresponding array
-	file.close()
+	
 
 def saveData():
 	tempfile = open('temp.txt', 'r')

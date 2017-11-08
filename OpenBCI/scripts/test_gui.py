@@ -120,7 +120,7 @@ def printData(sample):
 	global nPlots, data, df, init, averagedata, rawdata, threadFilter 
 
 	with(mutex):
-
+		timestamp = tme.time()
 		for i in range(nPlots):
 			avg = 0
 			rawdata[i].append(sample.channel_data[i])
