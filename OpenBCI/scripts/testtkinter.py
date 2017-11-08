@@ -4,7 +4,11 @@ from numpy.random import randint
 from globalvar import *
 from threading import Lock
 import threading
+import matplotlib.pyplot as plt
+
 mutex = Lock()
+
+
 size = 1000
 speed = 30
 ballsize = 30
@@ -14,6 +18,8 @@ root = None
 sleeping = False
 startMove = tme.time()
 endMode = tme.time()
+
+
 class Alien(object):
 	def __init__(self, canvas, *args, **kwargs):
 		global center, right, left, up, down, startSleep, startMove, endMove
@@ -31,6 +37,7 @@ class Alien(object):
 
 	def move(self):
 		global size, speed, center, right, left, up, down, startSleep, sleeping, startMove, endMove
+		global timestamp
 		x1, y1, x2, y2 = self.canvas.bbox(self.id)
 
 		if not center and ((right and (x1 <= (size/2) - ballsize)) 
@@ -40,9 +47,9 @@ class Alien(object):
 			self.vx = 0
 			self.vy = 0
 			center = True
-			endMove = tme.time()
-			print("Movementtime= ")
-			print(endMove - startMove)
+			#endMove = tme.time()
+			#print("Movementtime= ")
+			#print(tme.time())
 
 			cmd = 0
 			if right:
@@ -72,6 +79,9 @@ class Alien(object):
 
 		if sleeping and (tme.time() > startSleep + 5):
 			cmd = 5
+			endMove = tme.time()
+			#print("Movementtime= ")
+			#print(tme.time())
 			threadSave = threading.Thread(target=saveTempData, args=(cmd,))
 			threadSave.setDaemon(True)
 			threadSave.start()
@@ -163,9 +173,24 @@ def guiloop():
 
 def saveTempData(direction):
 	global data, nSamples
+	global timeData
 	length = 500
+
+	startTime = tme.time() + 0.05
+	ready = False
+
+	while not ready:
+		if timeData[1][-1] > startTime:
+			ready = True
+
+	#print("Found correct timestamp")
+	#print(startTime)
+	#print(timeData[1][-1])
+
 	with(mutex):
 		temp = data
+		tempTime = timeData
+
 	if len(temp[1]) > length:
 		f = open('temp.txt', 'a')
 		good = True
@@ -182,10 +207,28 @@ def saveTempData(direction):
 		else:
 			good = False
 		#print("New save")
-		start = len(temp[1])-length+5
-		stop = len(temp[1])-5
+
+		#stopindex = tempTime[1].index(startTime)
+		stopindex = len(temp[1])-5
+
+		for i in range(len(tempTime[1])-1, 0, -1):
+			if tempTime[1][i]>=startTime:
+				stopindex = i
+				break
+
+		#if stopindex + 50 < len(temp[1])-1:
+			#stop = stopindex + 50
+		#else:
+		stop = stopindex
+		
+		start = stop - length
+
+		#start = len(temp[1])-length+5
+		
 		#print(start)
-		#print(stop)
+		#print("Saving from time: ")
+		#print(startTime)
+		#print(timeData[1][stop])
 		if good:
 			for i in range(start, stop):
 				f.write(',')
@@ -210,11 +253,14 @@ def openFile():
 		feature = DataSet[i].split(',')
 		featuretype = feature[0]
 		feature.pop(0)
-		print("Featuretype = ")
-		print(featuretype)
-		print("Featuredata = ")
-		print(feature)
-		#Sort on featuretype and put feature in corresponding array
+
+		featureData = map(float, feature)
+		plt.plot(featureData, label=featuretype)
+		
+		plt.ylabel('uV')
+		plt.xlabel(featuretype)
+		
+		plt.show()
 	
 
 def saveData():
@@ -233,8 +279,10 @@ def clearTemp():
 	tempfile = open('temp.txt', 'w')
 	tempfile.truncate(0)
 	tempfile.close()
+	print("Temp is cleared")
 
 def clearData():
 	tempfile = open('data.txt', 'w')
 	tempfile.truncate(0)
 	tempfile.close()
+	print("Data is deleted")

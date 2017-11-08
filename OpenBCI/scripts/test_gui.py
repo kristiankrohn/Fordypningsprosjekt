@@ -15,19 +15,7 @@ from numpy.random import randint
 import Tkinter as tk
 import testtkinter as ttk
 from globalvar import *
-#z = randn(2000)
-#legends = []
-#for i in range(2):
-	#label = "Fp %d" %(i+1)
-	#print(label)
-	#label = tuple([label])
-	#legend, = plt.plot(z, label=label)
-	#legends.append(legend)
-#plt.ylabel('uV')
-#plt.xlabel('Sample')
-#plt.legend(handles=legends)
-#legends = []
-#plt.show()
+
 
 mutex = Lock()
 board = None
@@ -45,6 +33,7 @@ ptr = 0
 
 rawdata = [],[],[],[],[],[],[],[]
 averagedata = [],[],[],[],[],[],[],[]
+avgTimeData = [],[],[],[],[],[],[],[]
 p = None
 
 init = True
@@ -83,10 +72,7 @@ bandpassZi = np.zeros([8, window-1])
 highpassB = signal.firwin(window, lc, pass_zero=False, window = 'hann') #Bandpass
 print("Filtersetup finished")
 
-np.savetxt('bandpasscoeff.out', bandpassB)
-np.savetxt('highpasscoeff.out', highpassB)
 
-print("Saved coeff")
 
 #GUI parameters
 #size = 1000
@@ -116,11 +102,12 @@ def dataCatcher():
 	board.start_streaming(printData)
 
 
-def printData(sample):	
+def printData(sample):	#This function is too slow, we are loosing data and fucking up everything
 	global nPlots, data, df, init, averagedata, rawdata, threadFilter 
-
+	global avgTimeData, timeData, timestamp
 	with(mutex):
 		timestamp = tme.time()
+		#print(timestamp)
 		for i in range(nPlots):
 			avg = 0
 			rawdata[i].append(sample.channel_data[i])
@@ -133,13 +120,16 @@ def printData(sample):
 			if filtering:
 				averagedata[i].append(sample.channel_data[i]-average)
 				#averagedata[i].append(sample.channel_data[i])
+				avgTimeData[i].append(timestamp)
+			
 			else:
 				data[i].append(sample.channel_data[i])
-				
+				timeData[i].append(timestamp)
+
 		if len(data[0]) >= nSamples:
 			for i in range(nPlots):
 				data[i].pop(0)
-				
+				timeData[i].pop(0)
 				
 		if len(rawdata[0]) > 1000:
 			for i in range(nPlots):
@@ -150,9 +140,12 @@ def printData(sample):
 			threadFilter.setDaemon(True)
 			threadFilter.start()
 
-def appendData(y, i):
+def appendData(y, i, xt):
+	global data
+	global avgTimeData, timeData
 	for j in range(len(y)):
 		data[i].append(y[j])
+		timeData[i].append(xt[j])
 
 def filter():
 	global lowpassB, lowpassA, lowpassZi 
@@ -160,7 +153,7 @@ def filter():
 	global notchB, notchA, notchZi 
 	global averagedata, data, window, init, initNotch, initLowpass, initBandpass
 	global bandstopFilter, lowpassFilter, bandpassFilter
-
+	global avgTimeData, timeData
 	with(mutex):
 		
 		if init == True: #Gjor dette til en funksjon, input koeff, return zi
@@ -174,7 +167,7 @@ def filter():
 			#TODO: init filters again when turned on
 		for i in range(nPlots):
 			x = averagedata[i]
-
+			xt = avgTimeData[i]
 			if bandstopFilter:
 				x, notchZi[i] = signal.lfilter(notchB, notchA, x, zi=notchZi[i])
 
@@ -185,11 +178,12 @@ def filter():
 				x, bandpassZi[i] = signal.lfilter(bandpassB, bandpassA, x, zi=bandpassZi[i])
 
 
-			appendData(x,i)
+			appendData(x,i,xt)
 
 
 		averagedata = [],[],[],[],[],[],[],[]
-		
+		avgTimeData = [],[],[],[],[],[],[],[]
+
 def plot():
 	with(mutex):
 		while len(data[0]) > nSamples:
@@ -356,6 +350,11 @@ def keys():
 			ttk.clearData()
 		elif string == "cleartemp":
 			ttk.clearTemp()
+		elif string == "savefilter":
+			np.savetxt('bandpasscoeff.out', bandpassB)
+			np.savetxt('highpasscoeff.out', highpassB)
+
+print("Saved coeff")
 
 def save():
 	np.savetxt('data.out', data[1])
