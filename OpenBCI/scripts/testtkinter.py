@@ -44,30 +44,23 @@ class Alien(object):
 			print("Movementtime= ")
 			print(endMove - startMove)
 
+			cmd = 0
 			if right:
-				cmd = 'right'
-				threadSave = threading.Thread(target=saveData, args=(cmd))
-				threadSave.setDaemon(True)
-				threadSave.start()
-
+				cmd = 6
+				
 			elif left:
-				cmd = 'left'
-				threadSave = threading.Thread(target=saveData, args=(cmd))
-				threadSave.setDaemon(True)
-				threadSave.start()
+				cmd = 4
 
 			elif up:
-				cmd = 'up'
-				threadSave = threading.Thread(target=saveData, args=(cmd))
-				threadSave.setDaemon(True)
-				threadSave.start()
+				cmd = 8
 
 			elif down:
-				cmd = 'down'
-				threadSave = threading.Thread(target=saveData, args=(cmd))
-				threadSave.setDaemon(True)
-				threadSave.start()
+				cmd = 2
 
+			
+			threadSave = threading.Thread(target=saveTempData, args=(cmd,))
+			threadSave.setDaemon(True)
+			threadSave.start()
 
 			right = False
 			left = False
@@ -78,8 +71,8 @@ class Alien(object):
 			#tme.sleep(4)
 
 		if sleeping and (tme.time() > startSleep + 5):
-			cmd = 'center'
-			threadSave = threading.Thread(target=saveData, args=(cmd))
+			cmd = 5
+			threadSave = threading.Thread(target=saveTempData, args=(cmd,))
 			threadSave.setDaemon(True)
 			threadSave.start()
 			z = randint(0,4)
@@ -168,117 +161,41 @@ def guiloop():
 	#app = App(root)
 	root.mainloop()
 
-def saveData(direction):
+def saveTempData(direction):
 	global data, nSamples
-	length = 100
+	length = 500
 	with(mutex):
 		temp = data
 	if len(temp[1]) > length:
-		f = open('data.txt', 'a')
-	
-		if direction == 'left':
+		f = open('temp.txt', 'a')
+		good = True
+		if direction == 4:
 			f.write('l1')
-		elif direction == 'right':
+		elif direction == 6:
 			f.write('r1')
-		elif direction == 'up':
+		elif direction == 8:
 			f.write('u1')
-		elif direction == 'down':
+		elif direction == 2:
 			f.write('d1')
-		elif direction == 'center':
+		elif direction == 5:
 			f.write('c1')
-		print("New save")
+		else:
+			good = False
+		#print("New save")
 		start = len(temp[1])-length+5
 		stop = len(temp[1])-5
 		#print(start)
 		#print(stop)
-		for i in range(start, stop):
-			f.write(',')
-			num = temp[1][i]
-			f.write(str(num))
-			#print(i)
-		f.write(':')
+		if good:
+			for i in range(start, stop):
+				f.write(',')
+				num = temp[1][i]
+				f.write(str(num))
+				#print(i)
+			f.write(':')
 		f.close()
 
-def saveleft():
-	global data, nSamples
-	#print(data[1])
-	f = open('data.txt', 'a')
-	with(mutex):
-		if len(data[1])>750:
-			f.write('l1')
-			print(len(data[1])-10)
-			print(len(data[1])-1)
-			for i in range(len(data[1])-750, len(data[1])-1):
-				f.write(',')
-				f.write(str(data[1][i]))
-				print(i)
-		
-		f.write(':')
-	f.close()
-def saveright():
-	global data, nSamples
-	#print(data[1])
-	f = open('data.txt', 'a')
-	with(mutex):
-		if len(data[1])>750:
-			f.write('r1')
-			print(len(data[1])-10)
-			print(len(data[1])-1)
-			for i in range(len(data[1])-750, len(data[1])-1):
-				f.write(',')
-				f.write(str(data[1][i]))
-				print(i)
-	
-		f.write(':')
-	f.close()
-def saveup():
-	global data, nSamples
-	#print(data[1])
-	f = open('data.txt', 'a')
-	with(mutex):
-		if len(data[1])>750:
-			f.write('u1')
-			print(len(data[1])-10)
-			print(len(data[1])-1)
-			for i in range(len(data[1])-750, len(data[1])-1):
-				f.write(',')
-				f.write(str(data[1][i]))
-				print(i)
-	
-		f.write(':')
-	f.close()
-def savedown():
-	global data, nSamples
-	#print(data[1])
-	f = open('data.txt', 'a')
-	with(mutex):
-		if len(data[1])>750:
-			f.write('d1')
-			print(len(data[1])-10)
-			print(len(data[1])-1)
-			for i in range(len(data[1])-750, len(data[1])-1):
-				f.write(',')
-				f.write(str(data[1][i]))
-				print(i)
-				
-		f.write(':')
-	f.close()
-def savecenter():
-	global data, nSamples
-	#print(data[1])
-	f = open('data.txt', 'a')
-	with(mutex):
-		if len(data[1])>750:	
-			f.write('c1')
-			print(len(data[1])-10)
-			print(len(data[1])-1)
-			for i in range(len(data[1])-750, len(data[1])-1):
-				f.write(',')
-				f.write(str(data[1][i]))
-				print(i)
-			
-		f.write(':')
-	f.close()
+
 
 def openFile():
 	
@@ -297,3 +214,26 @@ def openFile():
 		print("Featuredata = ")
 		print(feature)
 		#Sort on featuretype and put feature in corresponding array
+	file.close()
+
+def saveData():
+	tempfile = open('temp.txt', 'r')
+	tempData = tempfile.read()
+	tempfile.close()
+	permfile = open('data.txt', 'a')
+	permfile.write(tempData)
+	permfile.close()
+	tempfile = open('temp.txt', 'w')
+	tempfile.truncate(0)
+	tempfile.close()
+	print("Saved")
+
+def clearTemp():
+	tempfile = open('temp.txt', 'w')
+	tempfile.truncate(0)
+	tempfile.close()
+
+def clearData():
+	tempfile = open('data.txt', 'w')
+	tempfile.truncate(0)
+	tempfile.close()

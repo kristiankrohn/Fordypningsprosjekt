@@ -333,8 +333,8 @@ def keys():
 			#plotAllThread = threading.Thread(target=plotAll,args=())
 			#plotAllThread.start()
 			#plotAllThread.join()
-		elif string == "save":
-			save()
+		#elif string == "save":
+			#save()
 		#elif string == "start":
 			#threadDataCatcher = threading.Thread(target=dataCatcher,args=())
 			#threadDataCatcher.setDaemon(True)
@@ -348,6 +348,14 @@ def keys():
 			threadGui.start()
 		elif string == "printdata":
 			ttk.openFile()
+		
+		elif string == "save":
+			ttk.saveData()
+
+		elif string == "deletedata":
+			ttk.clearData()
+		elif string == "cleartemp":
+			ttk.clearTemp()
 
 def save():
 	np.savetxt('data.out', data[1])
