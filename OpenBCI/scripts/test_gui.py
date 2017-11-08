@@ -8,7 +8,7 @@ import numpy as np
 import pyqtgraph as pg
 from pyqtgraph.ptime import time
 import threading
-from threading import Lock
+#from threading import Lock
 from scipy import signal
 import matplotlib.pyplot as plt
 from numpy.random import randint
@@ -17,7 +17,7 @@ import testtkinter as ttk
 from globalvar import *
 
 
-mutex = Lock()
+#mutex = Lock()
 board = None
 root = None
 graphVar = False
@@ -34,6 +34,7 @@ ptr = 0
 rawdata = [],[],[],[],[],[],[],[]
 averagedata = [],[],[],[],[],[],[],[]
 avgTimeData = [],[],[],[],[],[],[],[]
+average = np.zeros(nPlots)
 p = None
 
 init = True
@@ -51,8 +52,8 @@ notchB, notchA = signal.iirnotch(w0, Q)
 
 #sample = board._read_serial_binary()
 notchZi = np.zeros([8,2])
-print(notchB)
-print(notchA)
+#print(notchB)
+#print(notchA)
 #Butterworth lowpass filter
 N  = 4    # Filter order
 fk = 30
@@ -104,21 +105,30 @@ def dataCatcher():
 
 def printData(sample):	#This function is too slow, we are loosing data and fucking up everything
 	global nPlots, data, df, init, averagedata, rawdata, threadFilter 
-	global avgTimeData, timeData, timestamp
+	global avgTimeData, timeData, timestamp 
+	global average, avgLength, mutex
 	with(mutex):
 		timestamp = tme.time()
 		#print(timestamp)
 		for i in range(nPlots):
-			avg = 0
+			#avg = 0
 			rawdata[i].append(sample.channel_data[i])
+			if len(rawdata[i]) == avgLength:
+				average[i] = average[i] + (rawdata[i][-1]/avgLength) - (rawdata[i][0]/avgLength)
+				#print(average[i])
+				rawdata[i].pop(0)
+			else:
+				average[i] = sum(rawdata[i])/len(rawdata[i])
+				while len(rawdata[i]) >= avgLength:
+					rawdata[i].pop(0)
+				#print(len(rawdata[i]))
+			#for j in range(len(rawdata[0])-1):
+				#avg = avg + rawdata[i][j]
 
-			for j in range(len(rawdata[0])-1):
-				avg = avg + rawdata[i][j]
-
-			average = avg / (len(rawdata[0]))
+			#average = avg / (len(rawdata[0]))
 
 			if filtering:
-				averagedata[i].append(sample.channel_data[i]-average)
+				averagedata[i].append(sample.channel_data[i]-average[i])
 				#averagedata[i].append(sample.channel_data[i])
 				avgTimeData[i].append(timestamp)
 			
@@ -131,9 +141,9 @@ def printData(sample):	#This function is too slow, we are loosing data and fucki
 				data[i].pop(0)
 				timeData[i].pop(0)
 				
-		if len(rawdata[0]) > 1000:
-			for i in range(nPlots):
-				rawdata[i].pop(0)
+		#if len(rawdata[0]) > 1000:
+			#for i in range(nPlots):
+				#rawdata[i].pop(0)
 
 		if len(averagedata[0]) >= window:					
 			threadFilter = threading.Thread(target=filter,args=())
@@ -153,7 +163,7 @@ def filter():
 	global notchB, notchA, notchZi 
 	global averagedata, data, window, init, initNotch, initLowpass, initBandpass
 	global bandstopFilter, lowpassFilter, bandpassFilter
-	global avgTimeData, timeData
+	global avgTimeData, timeData, mutex
 	with(mutex):
 		
 		if init == True: #Gjor dette til en funksjon, input koeff, return zi
@@ -185,6 +195,7 @@ def filter():
 		avgTimeData = [],[],[],[],[],[],[],[]
 
 def plot():
+	global mutex
 	with(mutex):
 		while len(data[0]) > nSamples:
 			for i in range(nPlots):
@@ -353,8 +364,8 @@ def keys():
 		elif string == "savefilter":
 			np.savetxt('bandpasscoeff.out', bandpassB)
 			np.savetxt('highpasscoeff.out', highpassB)
+			print("Saved filter coefficients")
 
-print("Saved coeff")
 
 def save():
 	np.savetxt('data.out', data[1])

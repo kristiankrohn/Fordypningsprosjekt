@@ -2,11 +2,11 @@ import Tkinter as tk
 import time as tme
 from numpy.random import randint
 from globalvar import *
-from threading import Lock
+#from threading import Lock
 import threading
 import matplotlib.pyplot as plt
 
-mutex = Lock()
+#mutex = Lock()
 
 
 size = 1000
@@ -174,9 +174,10 @@ def guiloop():
 def saveTempData(direction):
 	global data, nSamples
 	global timeData
+	global mutex
 	length = 500
 
-	startTime = tme.time() + 0.05
+	startTime = tme.time() + 0.25
 	ready = False
 
 	while not ready:
@@ -212,7 +213,7 @@ def saveTempData(direction):
 		stopindex = len(temp[1])-5
 
 		for i in range(len(tempTime[1])-1, 0, -1):
-			if tempTime[1][i]>=startTime:
+			if tempTime[1][i]<=startTime:
 				stopindex = i
 				break
 
@@ -224,7 +225,9 @@ def saveTempData(direction):
 		start = stop - length
 
 		#start = len(temp[1])-length+5
-		
+		#print(len(temp[1]))
+		#print(len(tempTime[1]))
+		#print(stop)
 		#print(start)
 		#print("Saving from time: ")
 		#print(startTime)
@@ -232,6 +235,8 @@ def saveTempData(direction):
 		if good:
 			for i in range(start, stop):
 				f.write(',')
+				#print(i)
+				#print(stop)
 				num = temp[1][i]
 				f.write(str(num))
 				#print(i)
