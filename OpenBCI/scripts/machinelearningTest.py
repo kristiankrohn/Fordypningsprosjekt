@@ -10,11 +10,9 @@ from sklearn.externals import joblib #in order to store the svm
 
 file = open('data.txt', 'r')
 convertedDataSet = [[]]
-
-print(convertedDataSet)
-
 AllData = file.read()
 DataSet = []
+DataSetLabels = [] #r1 = 0, u1 = 1, l1 = 2, d1 = 3, c1 = 4
 DataSet = AllData.split(':')
 #print(DataSet)
 for i in range(len(DataSet)):
@@ -23,205 +21,36 @@ for i in range(len(DataSet)):
     feature = DataSet[i].split(',')
     featuretype = feature[0]
     feature.pop(0)
-    #print("Featuretype = ")
-    #print(featuretype)
-    #print("Featuredata = ")
-    #print(feature)
     convertedDataSet.append(map(float, feature))
+
+    if featuretype == 'r1':
+        DataSetLabels.append(0)
+    if featuretype == 'u1':
+        DataSetLabels.append(1)
+    if featuretype == 'l1':
+        DataSetLabels.append(2)
+    if featuretype == 'd1':
+        DataSetLabels.append(3)
+    if featuretype == 'c1':
+        DataSetLabels.append(4)
+
+    #pops the two empty lists at index 0 and end-index
     if i == (len(DataSet) - 1):
         convertedDataSet.pop(0)
         convertedDataSet.pop(len(DataSet) -1)
-        print(convertedDataSet)
-    #if i == 2:
-        #convertedDataSet = filter(None, convertedDataSet)
         #print(convertedDataSet)
 
-#for i in range(len(dataset)):
-#print(convertedDataSet[0])
-
-#print(convertedDataSet)
-
-
-#legend, = plt.plot(dataset, label=label)
-#legends.append(legend)
-#plt.ylabel('uV')
-#plt.xlabel('Sample')
-#plt.legend(handles=legends)
-#legends = []
-#plt.show()
-#iris = datasets.load_iris()
-#X, y = iris.data, iris.target
+print(DataSetLabels)
 X = np.array(convertedDataSet)
 
-Y = np.array([0,1,1,2,4,3,5,1,2,3,4,1,2,3,4,1,2,3])
-
-#clf = LinearSVC()
+Y = np.array(map(float, DataSetLabels))
 
 clf = joblib.load('machinestate.pkl')#loads the machine-learning state
 
 clf.fit(X,Y)
 joblib.dump(clf, 'machineState.pkl')#saves the machine-learning state
-
 print(clf.predict([[
-                    4,
-                    2,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    4,
-                    3,
-                    2,
-                    4,
-                    2,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    4,
-                    3,
-                    2,
-                    4,
-                    2,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    4,
-                    3,
-                    2,
-                    4,
-                    2,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    4,
-                    3,
-                    2,
-                    4,
-                    2,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    4,
-                    3,
-                    2,
-                    4,
-                    2,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    4,
-                    3,
-                    2,
-                    4,
-                    2,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    4,
-                    3,
-                    2,
-                    5,
-                    2,
-                    3,
-                    5,
-                    1,
-                    4,
-                    2,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    4,
-                    3,
-                    2,
-                    4,
-                    2,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    4,
-                    3,
-                    2,
-                    4,
-                    2,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    4,
-                    3,
-                    2,
-                    4,
-                    2,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    4,
-                    3,
-                    2,
-                    4,
-                    2,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    4,
-                    3,
-                    2,
-                    4,
-                    2,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    4,
-                    3,
-                    2,
-                    4,
-                    2,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    4,
-                    3,
-                    2,
-                    5,
-                    2,
-                    3,
-                    5,
-                    1,
 
-                    4,
-                    2,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    4,
                     3,
                     2,
                     4,
