@@ -15,131 +15,138 @@ sleeping = False
 startMove = tme.time()
 endMode = tme.time()
 class Alien(object):
-    def __init__(self, canvas, *args, **kwargs):
-    	global center, right, left, up, down, startSleep
-        self.canvas = canvas
-        self.id = canvas.create_oval(*args, **kwargs)
-        #self.canvas.coords(self.id, [20, 260, 120, 360])
-        self.vx = speed
-        self.vy = 0
-        center = False
-        right = False
-        left = False
-        up = False
-        down = False
-        startSleep = 0
+	def __init__(self, canvas, *args, **kwargs):
+		global center, right, left, up, down, startSleep, startMove, endMove
+		self.canvas = canvas
+		self.id = canvas.create_oval(*args, **kwargs)
+		#self.canvas.coords(self.id, [20, 260, 120, 360])
+		self.vx = speed
+		self.vy = 0
+		center = False
+		right = False
+		left = False
+		up = False
+		down = False
+		startSleep = 0
 
-    def move(self):
-    	global size, speed, center, right, left, up, down, startSleep, sleeping
-        x1, y1, x2, y2 = self.canvas.bbox(self.id)
+	def move(self):
+		global size, speed, center, right, left, up, down, startSleep, sleeping, startMove, endMove
+		x1, y1, x2, y2 = self.canvas.bbox(self.id)
 
-        if not center and ((right and (x1 <= (size/2) - ballsize)) 
-        				or (down and (y1 <= (size/2) - ballsize)) 
-        				or (left and (x2 >= (size/2) + ballsize)) 
-        				or (up and (y2 >= (size/2) + ballsize))):
-        	self.vx = 0
-        	self.vy = 0
-        	center = True
-        	endMove = tme.time()
-        	print("Movementtime= ")
-        	print(endMove - startMove)
+		if not center and ((right and (x1 <= (size/2) - ballsize)) 
+						or (down and (y1 <= (size/2) - ballsize)) 
+						or (left and (x2 >= (size/2) + ballsize)) 
+						or (up and (y2 >= (size/2) + ballsize))):
+			self.vx = 0
+			self.vy = 0
+			center = True
+			endMove = tme.time()
+			print("Movementtime= ")
+			print(endMove - startMove)
 
-        	if right:
-				threadSave = threading.Thread(target=saveData, args=('right'))
+			if right:
+				cmd = 'right'
+				threadSave = threading.Thread(target=saveData, args=(cmd))
 				threadSave.setDaemon(True)
 				threadSave.start()
 
-        	elif left:
-				threadSave = threading.Thread(target=saveData, args=('left'))
+			elif left:
+				cmd = 'left'
+				threadSave = threading.Thread(target=saveData, args=(cmd))
 				threadSave.setDaemon(True)
 				threadSave.start()
 
-        	elif up:
-				threadSave = threading.Thread(target=saveData, args=('up'))
-  				threadSave.setDaemon(True)
+			elif up:
+				cmd = 'up'
+				threadSave = threading.Thread(target=saveData, args=(cmd))
+				threadSave.setDaemon(True)
 				threadSave.start()
 
-        	elif down:
-				threadSave = threading.Thread(target=saveData, args=('down'))
+			elif down:
+				cmd = 'down'
+				threadSave = threading.Thread(target=saveData, args=(cmd))
 				threadSave.setDaemon(True)
 				threadSave.start()
 
 
-        	right = False
-        	left = False
-        	up = False
-        	down = False
-        	startSleep = tme.time()
-        	sleeping = True
-        	#tme.sleep(4)
+			right = False
+			left = False
+			up = False
+			down = False
+			startSleep = tme.time()
+			sleeping = True
+			#tme.sleep(4)
 
-        if sleeping and (tme.time() > startSleep + 5):
-			threadSave = threading.Thread(target=saveData, args=('center'))
+		if sleeping and (tme.time() > startSleep + 5):
+			cmd = 'center'
+			threadSave = threading.Thread(target=saveData, args=(cmd))
 			threadSave.setDaemon(True)
 			threadSave.start()
 			z = randint(0,4)
 			sleeping = False
-        	#print(z)
+			#print(z)
 			startMove = tme.time()
-        	if z == 0:
-        		self.vx = -speed
-        		self.vy = 0
-        	elif z == 1:
-        		self.vx = speed
-        		self.vy = 0
-        	elif z == 2:
-        		self.vx = 0
-        		self.vy = -speed
-        	else:
-        		self.vx = 0
-        		self.vy = speed
+			if z == 0:
+				self.vx = -speed
+				self.vy = 0
+			elif z == 1:
+				self.vx = speed
+				self.vy = 0
+			elif z == 2:
+				self.vx = 0
+				self.vy = -speed
+			else:
+				self.vx = 0
+				self.vy = speed
 
+		if x2 > size:
+			self.vx = 0
+			right = True
+			center = False
+			#tme.sleep(1)
+			self.vx = -speed
 
-        if x2 > size:
-            self.vx = 0
-            right = True
-            center = False
-            #tme.sleep(1)
-            self.vx = -speed
-        if x1 < 0:
-            self.vx = 0
-            left = True
-            center = False
-            #tme.sleep(1)
-            self.vx = speed
-        if y2 > size:
-        	self.vy = 0
-        	down = True
-        	center = False
-        	#tme.sleep(1)
-        	self.vy = -speed
-        if y1 < 0:
-        	self.vy = 0
-        	up = True
-        	center = False
-        	#tme.sleep(1)
-        	self.vy = speed
+		if x1 < 0:
+			self.vx = 0
+			left = True
+			center = False
+			#tme.sleep(1)
+			self.vx = speed
 
-        self.canvas.move(self.id, self.vx, self.vy)
+		if y2 > size:
+			self.vy = 0
+			down = True
+			center = False
+			#tme.sleep(1)
+			self.vy = -speed
+			
+		if y1 < 0:
+			self.vy = 0
+			up = True
+			center = False
+			#tme.sleep(1)
+			self.vy = speed
+
+		self.canvas.move(self.id, self.vx, self.vy)
 
 
 class Ball(object):
-    def __init__(self, master, **kwargs):
-        self.master = master
-        self.canvas = tk.Canvas(self.master, width=size, height=size)
-        self.canvas.pack()
-        self.aliens = Alien(self.canvas, (size/2) - ballsize, (size/2) - ballsize, (size/2) + ballsize, (size/2) + ballsize, outline='white', fill='red')
-        self.canvas.pack()
-        self.master.after(0, self.animation)
+	def __init__(self, master, **kwargs):
+		self.master = master
+		self.canvas = tk.Canvas(self.master, width=size, height=size)
+		self.canvas.pack()
+		self.aliens = Alien(self.canvas, (size/2) - ballsize, (size/2) - ballsize, (size/2) + ballsize, (size/2) + ballsize, outline='white', fill='red')
+		self.canvas.pack()
+		self.master.after(0, self.animation)
 
 
-    def animation(self):
-        #for alien in self.aliens:
-        self.aliens.move()
-        self.master.after(12, self.animation)
+	def animation(self):
+		#for alien in self.aliens:
+		self.aliens.move()
+		self.master.after(12, self.animation)
 
-    def close_window(self):
-        self.destroy()
+	def close_window(self):
+		self.destroy()
 
 def startgui():
 	global startButton, w, root
