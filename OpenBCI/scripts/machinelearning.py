@@ -5,6 +5,9 @@ from sklearn.multiclass import OneVsRestClassifier
 from sklearn.svm import LinearSVC
 from sklearn import svm
 from sklearn.externals import joblib #in order to store the svm
+import pandas as pd
+import seaborn as sns
+sns.set_palette('husl')
 
 DataSet = []
 predictSet = []
@@ -18,9 +21,9 @@ def main():
     AllData, predictData = readFile()
     arrangeDataset(AllData, predictData)
     extractFeatures() #calculate different features of time-series.
-    clf = createAndTrain() #switch to loadAndTrain() if you want to load previous machine-learning-state
-    saveMachinestate(clf) #if you want to save the state of classifier
-    predict(clf) #predict with given classifier.
+    #clf = createAndTrain() #switch to loadAndTrain() if you want to load previous machine-learning-state
+    #saveMachinestate(clf) #if you want to save the state of classifier
+    #predict(clf) #predict with given classifier.
 
 
 def readFile():
@@ -48,7 +51,7 @@ def appendLabel(featuretype):
 
 
 def extractFeatures():
-    global convertedDataSet, DataSetLabels
+    global convertedDataSet
     standardSet = np.std(convertedDataSet, axis = 1) #prints the standard-deviation of the 500 samples, for all movementdirections
     covSet = np.cov(convertedDataSet, rowvar = True)
     mean = np.mean(convertedDataSet, axis = 1)
@@ -57,41 +60,69 @@ def extractFeatures():
     minimum = np.amin(convertedDataSet, axis = 1)#find minimum of all 500 samples for the 23 directions.
     maximum = np.amax(convertedDataSet, axis = 1)#find maximum of all 500 samples for the 23 directions
     #absolute = np.absolute(convertedDataSet) Blir et 2D-array fordi den tar absoluttverdien til alle samples, for alle retninger. What to do??
-    #print(var)
-    #print(len(var))
 
 
     #from here and down is for visualization purposes only.
-    Y = np.array(map(float, DataSetLabels))
+    visualizeFeature(var, "var")
+
+    #print("Right:")
+    #print(visuRight)
+    #print("Left:")
+    #print(visuLeft)
+    #print("Up:")
+    #print(visuUp)
+    #print("Down:")
+    #print(visuDown)
+    #print("Center:")
+    #print(visuCenter)
+
+
+def visualizeFeature(visu, string):
+    global DataSetLabels
+
+
+    visuValue = []
+    visuDirection = []
     visuRight = []
     visuLeft = []
     visuUp = []
     visuDown = []
-    visuCenter= []
+    visuCenter = []
 
-    for i in range(len(var)):
+
+    Y = np.array(map(float, DataSetLabels))
+
+    for i in range(len(Y)):
+        visuValue.append(visu[i])
         if Y[i] == 0:
-            visuRight.append(mean[i])
+            visuDirection.append('Right')
         if Y[i] == 1:
-            visuUp.append(mean[i])
+            visuDirection.append('Up')
         if Y[i] == 2:
-            visuLeft.append(mean[i])
+            visuDirection.append('Left')
         if Y[i] == 3:
-            visuDown.append(mean[i])
+            visuDirection.append('Down')
         if Y[i] == 4:
-            visuCenter.append(mean[i])
+            visuDirection.append('Center')
 
 
-    print("Right:")
-    print(visuRight)
-    print("Left:")
-    print(visuLeft)
-    print("Up:")
-    print(visuUp)
-    print("Down:")
-    print(visuDown)
-    print("Center:")
-    print(visuCenter)
+    dictionary = { '%s' % string: visuValue, 'Direction': visuDirection}
+    dataframe = pd.DataFrame(columns = ['Direction' , '%s' % string])
+
+
+    dataframe['Direction'] = visuDirection
+    dataframe['%s' % string] = visuValue
+    print(dataframe)
+    #print(dataframe.columns.get_loc("var"))
+    #dataframe = pd.DataFrame.from_dict(dictionary, orient = 'index')
+
+    #print(string + ":")
+    #print(dataframe)
+    print('Direction' in dataframe.index)
+
+    #print(dataframe['Direction'])
+    sns.barplot(data=dataframe, y='Direction')
+    #plt.show()
 
 def arrangeDataset(AllData, predictData):
     global Dataset, predictSet, convertedDataSet, convertedPredictData
