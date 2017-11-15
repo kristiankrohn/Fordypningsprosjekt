@@ -63,6 +63,7 @@ lowpassZi = np.zeros([8,N])
 
 
 #FIR bandpass filter
+hcc = 56.0/(fs/2) #highest cut, only used if multibandpass
 hc = 45.0/(fs/2) #High cut
 lc = 5.0/(fs/2)	#Low cut
 
@@ -73,7 +74,7 @@ bandpassZi = np.zeros([8, window-1])
 highpassB = signal.firwin(window, lc, pass_zero=False, window = 'hann') #Bandpass
 print("Filtersetup finished")
 
-
+print("Placeholder %d testing" % hcc)
 
 #GUI parameters
 #size = 1000
@@ -121,6 +122,7 @@ def printData(sample):	#This function is too slow, we are loosing data and fucki
 				average[i] = sum(rawdata[i])/len(rawdata[i])
 				while len(rawdata[i]) >= avgLength:
 					rawdata[i].pop(0)
+					print("Faen, abort abort abort!")
 				#print(len(rawdata[i]))
 			#for j in range(len(rawdata[0])-1):
 				#avg = avg + rawdata[i][j]
@@ -294,7 +296,17 @@ def keys():
 
 	global board, bandstopFilter, filtering, lowpassFilter, bandpassFilter, graphVar
 	while True:
-		string = raw_input()
+		inputString = raw_input()
+		if "=" in inputString:
+			stringArr = inputString.split('=')
+			string = stringArr[0]
+			if stringArr[1].isdigit():
+				inputval = int(stringArr[1])
+			else:
+				inputval = 0
+		else:
+			string = inputString
+
 		if string == "notch=true":
 			bandstopFilter = True
 		elif string == "notch=false":
@@ -357,7 +369,7 @@ def keys():
 		elif string == "save":
 			ttk.saveData()
 
-		elif string == "deletedata":
+		elif string == "deletealldata":
 			ttk.clearData()
 		elif string == "cleartemp":
 			ttk.clearTemp()
@@ -365,6 +377,14 @@ def keys():
 			np.savetxt('bandpasscoeff.out', bandpassB)
 			np.savetxt('highpasscoeff.out', highpassB)
 			print("Saved filter coefficients")
+		elif string == "deletedataelement":
+			ttk.deletedataelement(inputval)
+		elif string == "deletetempelement":
+			ttk.deletetempelement(inputval)
+		elif string == "viewdataelement":
+			ttk.viewdataelement(inputval)
+		elif string == "viewtempelement":
+			ttk.viewtempelement(inputval)
 
 
 def save():

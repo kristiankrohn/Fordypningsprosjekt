@@ -99,7 +99,8 @@ lowpassZi = np.zeros([8,N])
 
 
 #FIR bandpass filter
-hc = 45.0/(fs/2) #High cut
+hcc = 56.0/(fs/2)
+hc = 44.0/(fs/2) #High cut
 lc = 5.0/(fs/2)	#Low cut
 
 bandpassB = signal.firwin(window, [lc, hc], pass_zero=False, window = 'hann') #Bandpass
@@ -111,6 +112,9 @@ highpassA = 1.0
 highpassZi = np.zeros([8, window-1])
 print("Filtersetup finished")
 
+multibandB = signal.firwin(window, [lc, hc, hcc], pass_zero=False, window = 'hann') #Bandpass
+multibandA = 1.0
+multibandZi = np.zeros([8, window-1])
 
 def dataCatcher():
 	global board
@@ -144,8 +148,10 @@ def printData(sample):
 		if len(data[1]) >= nSamples:
 			#print(data)
 			for i in range(nPlots):
-				data[i].pop(0)
-				
+				try:
+					data[i].pop(0)
+				except IndexError:
+					print("Faen")
 				
 		if len(rawdata[0]) > 1000:
 			for i in range(nPlots):
@@ -166,7 +172,8 @@ def notchFilter():
 	global notchB, notchA, notchZi 
 	global averagedata, data, window, init, initNotch, initLowpass, initBandpass
 	global bandstopFilter, lowpassFilter, bandpassFilter
-	
+	global multibandB, multibandA, multibandZi
+
 	with(mutex):
 		
 		if init == True: #Gjor dette til en funksjon, input koeff, return zi
@@ -175,6 +182,7 @@ def notchFilter():
 				lowpassZi[i] = signal.lfilter_zi(lowpassB, lowpassA) * averagedata[i][0]
 				bandpassZi[i] = signal.lfilter_zi(bandpassB, bandpassA) * averagedata[i][0]
 				highpassZi[i] = signal.lfilter_zi(highpassB, highpassA) * averagedata[i][0]
+				multibandZi[i] = signal.lfilter_zi(multibandB, multibandA) * averagedata[i][0]
 			init = False
 		appendData(averagedata[8],0)
 		appendData(averagedata[0],1)
@@ -192,7 +200,8 @@ def notchFilter():
 
 		for i in range(1):
 			x = averagedata[i]
-			x, highpassZi[i+2] = signal.lfilter(highpassB, highpassA, x, zi=highpassZi[i+2])
+			x, multibandZi[i] = signal.lfilter(multibandB, multibandA, x, zi=multibandZi[i])
+			#x, highpassZi[i+2] = signal.lfilter(highpassB, highpassA, x, zi=highpassZi[i+2])
 			appendData(x,i+3)
 
 		for i in range (1):
@@ -209,6 +218,7 @@ def notchFilter():
 			x = averagedata[8]
 			x, notchZi[i+4] = signal.lfilter(notchB, notchA, x, zi=notchZi[i+4])
 			x, highpassZi[i+4] = signal.lfilter(highpassB, highpassA, x, zi=highpassZi[i+4])
+			
 			appendData(x,i+6)
 		averagedata = [],[],[],[],[],[],[],[],[]
 
@@ -270,7 +280,7 @@ def plot():
 			ax4 = plt.subplot(422)
 			legend, = plt.plot(x, data[i+3], label=label)
 			#legends.append(legend)
-		ax4.set_title("Highpass + average")
+		ax4.set_title("Multiband")
 		plt.ylabel('uV')
 		plt.xlabel('Seconds')
 		for i in range(1):

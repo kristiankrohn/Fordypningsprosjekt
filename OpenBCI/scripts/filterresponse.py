@@ -21,10 +21,10 @@ cutoff_hz = 3.0
 
 
 #Bandpass
-#a = firwin(N, [cutoff_hz/nyq_rate, 45/nyq_rate], pass_zero=False, window = 'hann')
+a = firwin(N, [cutoff_hz/nyq_rate, 44/nyq_rate, 56/nyq_rate], pass_zero=False, window = 'hann')
 
 #Highpass
-a = signal.firwin(N, cutoff_hz/nyq_rate, pass_zero=False, window = 'hann') #Bandpass
+#a = signal.firwin(N, cutoff_hz/nyq_rate, pass_zero=False, window = 'hann') #Bandpass
 #a = -a
 #a[n/2] = a[n/2] + 1
 #N  = 30    # Filter order
@@ -47,7 +47,7 @@ freq = w*fs/(2*np.pi)
  # Plot
 fig, ax = plt.subplots(2, 1, figsize=(8, 6))
 ax[0].plot(freq, 20*np.log10(abs(h)), color='blue')
-ax[0].set_title("Highpass")
+ax[0].set_title("Multi-band")
 ax[0].set_ylabel("Amplitude (dB)", color='blue')
 ax[0].set_xlim([0, 100])
 ax[0].set_ylim([-100, 10])

@@ -1,13 +1,14 @@
 import Tkinter as tk
 import time as tme
+import numpy as np
 from numpy.random import randint
 from globalvar import *
 #from threading import Lock
 import threading
 import matplotlib.pyplot as plt
-
-#mutex = Lock()
-
+from operator import sub
+filelock = Lock()
+from scipy import signal
 
 size = 1000
 speed = 30
@@ -18,26 +19,29 @@ root = None
 sleeping = False
 startMove = tme.time()
 endMode = tme.time()
-
+z = 3
+length = 500
 
 class Alien(object):
 	def __init__(self, canvas, *args, **kwargs):
-		global center, right, left, up, down, startSleep, startMove, endMove
+		global center, right, left, up, down, startSleep, startMove, endMove, sleeping
 		self.canvas = canvas
 		self.id = canvas.create_oval(*args, **kwargs)
 		#self.canvas.coords(self.id, [20, 260, 120, 360])
-		self.vx = speed
+		self.vx = 0
 		self.vy = 0
 		center = False
 		right = False
 		left = False
 		up = False
 		down = False
-		startSleep = 0
+		startSleep = tme.time()
+		sleeping = True
 
 	def move(self):
 		global size, speed, center, right, left, up, down, startSleep, sleeping, startMove, endMove
 		global timestamp
+		global z
 		x1, y1, x2, y2 = self.canvas.bbox(self.id)
 
 		if not center and ((right and (x1 <= (size/2) - ballsize)) 
@@ -77,7 +81,7 @@ class Alien(object):
 			sleeping = True
 			#tme.sleep(4)
 
-		if sleeping and (tme.time() > startSleep + 5):
+		if sleeping and (tme.time() > startSleep + 2):
 			cmd = 5
 			endMove = tme.time()
 			#print("Movementtime= ")
@@ -85,49 +89,58 @@ class Alien(object):
 			threadSave = threading.Thread(target=saveTempData, args=(cmd,))
 			threadSave.setDaemon(True)
 			threadSave.start()
-			z = randint(0,4)
+			#z = randint(0,4)
+			if z == 3:
+				z = 0
+			else:
+				z = z + 1
+
 			sleeping = False
 			#print(z)
 			startMove = tme.time()
 			if z == 0:
-				self.vx = -speed
-				self.vy = 0
+				self.vx = 0
+				self.vy = -speed
+				print("Up")
 			elif z == 1:
 				self.vx = speed
 				self.vy = 0
+				print("Right")
 			elif z == 2:
 				self.vx = 0
-				self.vy = -speed
-			else:
-				self.vx = 0
 				self.vy = speed
+				print("Down")
+			else:
+				self.vx = -speed
+				self.vy = 0
+				print("Left")
 
 		if x2 > size:
 			self.vx = 0
 			right = True
 			center = False
-			#tme.sleep(1)
+			tme.sleep(1)
 			self.vx = -speed
 
 		if x1 < 0:
 			self.vx = 0
 			left = True
 			center = False
-			#tme.sleep(1)
+			tme.sleep(1)
 			self.vx = speed
 
 		if y2 > size:
 			self.vy = 0
 			down = True
 			center = False
-			#tme.sleep(1)
+			tme.sleep(1)
 			self.vy = -speed
 			
 		if y1 < 0:
 			self.vy = 0
 			up = True
 			center = False
-			#tme.sleep(1)
+			tme.sleep(1)
 			self.vy = speed
 
 		self.canvas.move(self.id, self.vx, self.vy)
@@ -175,41 +188,26 @@ def saveTempData(direction):
 	global data, nSamples
 	global timeData
 	global mutex
-	length = 500
-
-	startTime = tme.time() + 0.25
+	global length
+	numCh = 2
+	
+	if direction != 5:
+		startTime = tme.time() + 0.5
+	else: 
+		startTime = tme.time()
+	
 	ready = False
 
 	while not ready:
 		if timeData[1][-1] > startTime:
 			ready = True
 
-	#print("Found correct timestamp")
-	#print(startTime)
-	#print(timeData[1][-1])
-
 	with(mutex):
 		temp = data
 		tempTime = timeData
 
 	if len(temp[1]) > length:
-		f = open('temp.txt', 'a')
-		good = True
-		if direction == 4:
-			f.write('l1')
-		elif direction == 6:
-			f.write('r1')
-		elif direction == 8:
-			f.write('u1')
-		elif direction == 2:
-			f.write('d1')
-		elif direction == 5:
-			f.write('c1')
-		else:
-			good = False
-		#print("New save")
 
-		#stopindex = tempTime[1].index(startTime)
 		stopindex = len(temp[1])-5
 
 		for i in range(len(tempTime[1])-1, 0, -1):
@@ -217,56 +215,296 @@ def saveTempData(direction):
 				stopindex = i
 				break
 
-		#if stopindex + 50 < len(temp[1])-1:
-			#stop = stopindex + 50
-		#else:
 		stop = stopindex
-		
 		start = stop - length
+		if stop > len(temp[0])-1:
+			print("Index error, aborting save operation")
+		else: 
+			with(filelock):
+				f = open('temp.txt', 'a')
+				for j in range(numCh):
+					good = True
+					if direction == 4:
+						f.write('l')
+					elif direction == 6:
+						f.write('r')
+					elif direction == 8:
+						f.write('u')
+					elif direction == 2:
+						f.write('d')
+					elif direction == 5:
+						f.write('c')
+					else:
+						good = False
 
-		#start = len(temp[1])-length+5
-		#print(len(temp[1]))
-		#print(len(tempTime[1]))
-		#print(stop)
-		#print(start)
-		#print("Saving from time: ")
-		#print(startTime)
-		#print(timeData[1][stop])
-		if good:
-			for i in range(start, stop):
-				f.write(',')
-				#print(i)
-				#print(stop)
-				num = temp[1][i]
-				f.write(str(num))
-				#print(i)
-			f.write(':')
-		f.close()
+					if good:
+						f.write(str(j))
+						for i in range(start, stop):
+							f.write(',')
+							num = temp[j][i]
+							f.write(str(num))
+						f.write(':')
+				f.close()
 
 
 
 def openFile():
-	
+	global length
 	file = open('data.txt', 'r')
 	AllData = file.read()
 	DataSet = []
 	DataSet = AllData.split(':')
 	#print(DataSet)
 	file.close()
-	for i in range(len(DataSet)):
-		feature = []
-		feature = DataSet[i].split(',')
-		featuretype = feature[0]
-		feature.pop(0)
+	#DataSet.pop(-1)
+	for i in range(0, len(DataSet), 2):
+		care = True
+		feature1 = []
+		feature1 = DataSet[i].split(',')
+		featuretype1 = feature1[0]
+		feature1.pop(0)
+		if featuretype1 == 'u0':
+			title = "Up"
+		elif featuretype1 == 'd0':
+			title = "Down"
+		elif featuretype1 == 'l0':
+			title = "Left"
+		elif featuretype1 == 'r0':
+			title = "Right"
+		elif featuretype1 == 'c0':
+			title = "Center"
+			#care = False
+		else:
+			title = featuretype1
+			care = False
 
-		featureData = map(float, feature)
-		plt.plot(featureData, label=featuretype)
-		
-		plt.ylabel('uV')
-		plt.xlabel(featuretype)
-		
-		plt.show()
-	
+		if care:
+			plt.suptitle(title)
+			print(title)
+			print(featuretype1)
+			featureData1 = map(float, feature1)
+			x = np.arange(0, length/250.0, 1.0/250.0)
+			ax1 = plt.subplot(211)
+			ax1.set_autoscaley_on(False)
+			ax1.set_ylim([-100,100])
+			plt.plot(x, featureData1, label=featuretype1)
+			ax1.set_title("Fp1")
+			plt.ylabel('uV')
+			plt.xlabel('Seconds')
+
+			feature2 = []
+			feature2 = DataSet[i+1].split(',')
+			featuretype2 = feature2[0]
+			feature2.pop(0)
+			print(featuretype2)
+			featureData2 = map(float, feature2)
+			ax2 = plt.subplot(212)
+			ax2.set_autoscaley_on(False)
+			ax2.set_ylim([-100,100])
+			plt.plot(x, featureData2, label=featuretype2)
+			ax2.set_title("Fp2")
+			plt.ylabel('uV')
+			plt.xlabel('Seconds')
+
+
+			#featureData3 = map(sub, featureData1, featureData2)
+			#ax3 = plt.subplot(313)
+			#ax3.set_autoscaley_on(False)
+			#ax3.set_ylim([-100,100])
+			#ax3.set_title("Fp1 - Fp2")
+			#plt.plot(x, featureData3, label='Fp1 - Fp2')
+			#plt.ylabel('uV')
+			#plt.xlabel('Seconds')
+
+			#featureData3 = map(sub, featureData1, featureData2)
+			#ax3 = plt.subplot(313)
+			#ax3.set_autoscaley_on(False)
+			#ax3.set_xlim([1,20])
+			#ax3.set_title("Fp1 - Fp2")
+			#Y = abs(np.fft.fft(featureData1)/len(featureData1))
+			
+			#plt.plot(Y, label='Fp1 - Fp2')
+			#plt.ylabel('uV')
+			#plt.xlabel('Hz')
+			#print(signal.hilbert(featureData1))
+			savestring = "figures/" + title +"/"+ title + str(i/2) + ".png"
+			plt.subplots_adjust(hspace=0.45)
+			plt.savefig(savestring, bbox_inches='tight')
+			#plt.show()
+			plt.close()
+
+def viewdataelement(index):
+	global length
+	file = open('data.txt', 'r')
+	AllData = file.read()
+	DataSet = []
+	DataSet = AllData.split(':')
+	#print(DataSet)
+	file.close()
+	#DataSet.pop(-1)
+	i = index * 2
+	if i > len(DataSet)-2:
+		print("Value is too big")
+	else:
+		care = True
+		feature1 = []
+		feature1 = DataSet[i].split(',')
+		featuretype1 = feature1[0]
+		feature1.pop(0)
+		if featuretype1 == 'u0':
+			title = "Up"
+		elif featuretype1 == 'd0':
+			title = "Down"
+		elif featuretype1 == 'l0':
+			title = "Left"
+		elif featuretype1 == 'r0':
+			title = "Right"
+		elif featuretype1 == 'c0':
+			title = "Center"
+			#care = False
+		else:
+			title = featuretype1
+			care = False
+
+		if care:
+			plt.suptitle(title)
+			print(title)
+			print(featuretype1)
+			featureData1 = map(float, feature1)
+			x = np.arange(0, length/250.0, 1.0/250.0)
+			ax1 = plt.subplot(211)
+			ax1.set_autoscaley_on(False)
+			ax1.set_ylim([-100,100])
+			plt.plot(x, featureData1, label=featuretype1)
+			ax1.set_title("Fp1")
+			plt.ylabel('uV')
+			plt.xlabel('Seconds')
+
+			feature2 = []
+			feature2 = DataSet[i+1].split(',')
+			featuretype2 = feature2[0]
+			feature2.pop(0)
+			print(featuretype2)
+			featureData2 = map(float, feature2)
+			ax2 = plt.subplot(212)
+			ax2.set_autoscaley_on(False)
+			ax2.set_ylim([-100,100])
+			plt.plot(x, featureData2, label=featuretype2)
+			ax2.set_title("Fp2")
+			plt.ylabel('uV')
+			plt.xlabel('Seconds')
+
+			savestring = "figures/" + title +"/"+ title + str(i/2) + ".png"
+			plt.subplots_adjust(hspace=0.45)
+			#plt.savefig(savestring, bbox_inches='tight')
+			plt.show()
+			#plt.close()
+
+def viewtempelement(index):
+	global length
+	file = open('temp.txt', 'r')
+	AllData = file.read()
+	DataSet = []
+	DataSet = AllData.split(':')
+	#print(DataSet)
+	file.close()
+	#DataSet.pop(-1)
+	i = index * 2
+	if i > len(DataSet)-2:
+		print("Value is too big")
+	else:
+		care = True
+		feature1 = []
+		feature1 = DataSet[i].split(',')
+		featuretype1 = feature1[0]
+		feature1.pop(0)
+		if featuretype1 == 'u0':
+			title = "Up"
+		elif featuretype1 == 'd0':
+			title = "Down"
+		elif featuretype1 == 'l0':
+			title = "Left"
+		elif featuretype1 == 'r0':
+			title = "Right"
+		elif featuretype1 == 'c0':
+			title = "Center"
+			#care = False
+		else:
+			title = featuretype1
+			care = False
+
+		if care:
+			plt.suptitle(title)
+			print(title)
+			print(featuretype1)
+			featureData1 = map(float, feature1)
+			x = np.arange(0, length/250.0, 1.0/250.0)
+			ax1 = plt.subplot(211)
+			ax1.set_autoscaley_on(False)
+			ax1.set_ylim([-100,100])
+			plt.plot(x, featureData1, label=featuretype1)
+			ax1.set_title("Fp1")
+			plt.ylabel('uV')
+			plt.xlabel('Seconds')
+
+			feature2 = []
+			feature2 = DataSet[i+1].split(',')
+			featuretype2 = feature2[0]
+			feature2.pop(0)
+			print(featuretype2)
+			featureData2 = map(float, feature2)
+			ax2 = plt.subplot(212)
+			ax2.set_autoscaley_on(False)
+			ax2.set_ylim([-100,100])
+			plt.plot(x, featureData2, label=featuretype2)
+			ax2.set_title("Fp2")
+			plt.ylabel('uV')
+			plt.xlabel('Seconds')
+
+			savestring = "figures/" + title +"/"+ title + str(i/2) + ".png"
+			plt.subplots_adjust(hspace=0.45)
+			#plt.savefig(savestring, bbox_inches='tight')
+			plt.show()
+			#plt.close()
+def deletedataelement(index):
+	global length
+	index = index * 2
+	file = open('data.txt', 'r')
+	AllData = file.read()
+	DataSet = []
+	DataSet = AllData.split(':')
+	DataSet.pop(index)
+	DataSet.pop(index)
+	#print(DataSet)
+	file.close()
+	file = open('data.txt', 'w')
+	for i in range(len(DataSet)-1):
+		file.write(DataSet[i])
+		file.write(':')
+	file.close()
+	print("Data element %d is deleted" % index)
+
+def deletetempelement(index):
+	global length
+	index = index * 2
+	file = open('temp.txt', 'r')
+	AllData = file.read()
+	DataSet = []
+	DataSet = AllData.split(':')
+	DataSet.pop(index)
+	DataSet.pop(index)
+	#print(DataSet)
+	file.close()
+	file = open('temp.txt', 'w')
+	for i in range(len(DataSet)-1):
+		file.write(DataSet[i])
+		file.write(':')
+	file.close()
+	print("Temp element %d is deleted" % index)
+
+def parametrization(map1, map2):
+	map3 = map1 - map2
+
 
 def saveData():
 	tempfile = open('temp.txt', 'r')
