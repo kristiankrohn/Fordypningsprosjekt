@@ -255,7 +255,7 @@ def saveTempData(direction):
 						#f.write(':')
 				#f.close()
 				abort = False
-				f = []
+				f = ""
 				for j in range(numCh):
 					good = True
 					if direction == 4:

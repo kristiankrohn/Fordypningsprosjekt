@@ -303,7 +303,7 @@ def keys():
 			if stringArr[1].isdigit():
 				inputval = int(stringArr[1])
 			else:
-				inputval = 0
+				inputval = None
 		else:
 			string = inputString
 
@@ -378,13 +378,25 @@ def keys():
 			np.savetxt('highpasscoeff.out', highpassB)
 			print("Saved filter coefficients")
 		elif string == "deletedataelement":
-			ttk.deletedataelement(inputval)
+			if inputval != None:
+				ttk.deletedataelement(inputval)
+			else:
+				print("Invalid input")
 		elif string == "deletetempelement":
-			ttk.deletetempelement(inputval)
+			if inputval != None:
+				ttk.deletetempelement(inputval)
+			else:
+				print("Invalid input")
 		elif string == "viewdataelement":
-			ttk.viewdataelement(inputval)
+			if inputval != None:
+				ttk.viewdataelement(inputval)
+			else:
+				print("Invalid input")
 		elif string == "viewtempelement":
-			ttk.viewtempelement(inputval)
+			if inputval != None:
+				ttk.viewtempelement(inputval)
+			else:
+				print("Invalid input")
 		elif string == "printtemp":
 			ttk.opentemp()
 
