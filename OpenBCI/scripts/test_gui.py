@@ -74,7 +74,7 @@ bandpassZi = np.zeros([8, window-1])
 highpassB = signal.firwin(window, lc, pass_zero=False, window = 'hann') #Bandpass
 print("Filtersetup finished")
 
-print("Placeholder %d testing" % hcc)
+#print("Placeholder %d testing" % hcc)
 
 #GUI parameters
 #size = 1000
@@ -385,7 +385,8 @@ def keys():
 			ttk.viewdataelement(inputval)
 		elif string == "viewtempelement":
 			ttk.viewtempelement(inputval)
-
+		elif string == "printtemp":
+			ttk.opentemp()
 
 def save():
 	np.savetxt('data.out', data[1])
