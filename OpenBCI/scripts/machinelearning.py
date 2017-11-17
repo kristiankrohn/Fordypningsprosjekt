@@ -141,6 +141,7 @@ def predict(clf):
 
 def extractFeatures():
     global convertedDataSet, convertedCh0, convertedCh1
+    #print(convertedDataSet)
     std = np.std(convertedDataSet, axis = 1) #prints the standard-deviation of the 500 samples, for all movementdirections
     #cov = np.cov(convertedDataSet, rowvar = True)
 
@@ -172,7 +173,7 @@ def extractFeatures():
 
     #from here and down is for visualization purposes only.
 
-    visualizeFeature(compMaximum, "compare maximum") #need to have "compare" in string if you want to compare channels
+    visualizeFeature(std, "standard-deviation") #need to have "compare" in string if you want to compare channels
 
 def visualizeFeature(visu, string):
     global DataSetLabels

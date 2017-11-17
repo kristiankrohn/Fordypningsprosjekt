@@ -34,7 +34,9 @@ ptr = 0
 rawdata = [],[],[],[],[],[],[],[]
 averagedata = [],[],[],[],[],[],[],[]
 avgTimeData = [],[],[],[],[],[],[],[]
+averageShortData = [],[],[],[],[],[],[],[]
 average = np.zeros(nPlots)
+averageShort = np.zeros(nPlots)
 p = None
 
 init = True
@@ -67,7 +69,8 @@ hcc = 56.0/(fs/2) #highest cut, only used if multibandpass
 hc = 45.0/(fs/2) #High cut
 lc = 5.0/(fs/2)	#Low cut
 
-bandpassB = signal.firwin(window, [lc, hc], pass_zero=False, window = 'hann') #Bandpass
+bandpassB = signal.firwin(window, hc, pass_zero=True, window = 'hann') #Bandpass
+#bandpassB = signal.firwin(window, [lc, hc], pass_zero=False, window = 'hann') #Bandpass
 bandpassA = 1.0 #np.ones(len(bandpassA))
 bandpassZi = np.zeros([8, window-1])
 #print(bandpassB)
@@ -108,6 +111,7 @@ def printData(sample):	#This function is too slow, we are loosing data and fucki
 	global nPlots, data, df, init, averagedata, rawdata, threadFilter 
 	global avgTimeData, timeData, timestamp 
 	global average, avgLength, mutex
+	global averageShortData, avgShortLength
 	with(mutex):
 		timestamp = tme.time()
 		#print(timestamp)
@@ -123,14 +127,28 @@ def printData(sample):	#This function is too slow, we are loosing data and fucki
 				while len(rawdata[i]) >= avgLength:
 					rawdata[i].pop(0)
 					print("Faen, abort abort abort!")
-				#print(len(rawdata[i]))
-			#for j in range(len(rawdata[0])-1):
-				#avg = avg + rawdata[i][j]
 
-			#average = avg / (len(rawdata[0]))
+
+
+
+			averageShortData[i].append(sample.channel_data[i]-average[i])
+			
+			if len(averageShortData[i]) == avgShortLength:
+				averageShort[i] = averageShort[i] + (averageShortData[i][-1]/avgShortLength) - (averageShortData[i][0]/avgShortLength)
+				#print(average[i])
+				averageShortData[i].pop(0)
+			else:
+				averageShort[i] = sum(averageShortData[i])/len(averageShortData[i])
+				while len(averageShortData[i]) >= avgShortLength:
+					averageShortData[i].pop(0)
+					print("Faen, abort abort abort!")					
+
+			#print(averageShort[i])
+
 
 			if filtering:
-				averagedata[i].append(sample.channel_data[i]-average[i])
+				averagedata[i].append((sample.channel_data[i]-average[i])-averageShort[i])
+				#averagedata[i].append(sample.channel_data[i]-average[i])
 				#averagedata[i].append(sample.channel_data[i])
 				avgTimeData[i].append(timestamp)
 			
@@ -352,10 +370,10 @@ def keys():
 			#plotAllThread.join()
 		#elif string == "save":
 			#save()
-		#elif string == "start":
-			#threadDataCatcher = threading.Thread(target=dataCatcher,args=())
-			#threadDataCatcher.setDaemon(True)
-			#threadDataCatcher.start()
+		elif string == "start":
+			threadDataCatcher = threading.Thread(target=dataCatcher,args=())
+			threadDataCatcher.setDaemon(True)
+			threadDataCatcher.start()
 		elif string == "graph":
 			graphVar = True
 
@@ -416,9 +434,9 @@ def main():
 	threadKeys = threading.Thread(target=keys,args=())
 	threadKeys.setDaemon(True)
 	threadKeys.start()
-	threadDataCatcher = threading.Thread(target=dataCatcher,args=())
-	threadDataCatcher.setDaemon(True)
-	threadDataCatcher.start()
+	#threadDataCatcher = threading.Thread(target=dataCatcher,args=())
+	#threadDataCatcher.setDaemon(True)
+	#threadDataCatcher.start()
 	#threadGui = threading.Thread(target=gui, args=())
 	#threadGui.setDaemon(True)
 	#threadGui.start()

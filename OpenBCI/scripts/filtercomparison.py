@@ -111,6 +111,9 @@ highpassA = 1.0
 highpassZi = np.zeros([8, window-1])
 print("Filtersetup finished")
 
+multibandB = signal.firwin(window, [lc, hc, hcc], pass_zero=False, window = 'hann') #Bandpass
+multibandA = 1.0
+multibandZi = np.zeros([8, window-1])
 
 def dataCatcher():
 	global board
@@ -161,7 +164,7 @@ def notchFilter():
 	global notchB, notchA, notchZi 
 	global averagedata, data, window, init, initNotch, initLowpass, initBandpass
 	global bandstopFilter, lowpassFilter, bandpassFilter
-	
+	global multibandB, multibandA, multibandZi
 	with(mutex):
 		
 		if init == True: #Gjor dette til en funksjon, input koeff, return zi
@@ -170,6 +173,7 @@ def notchFilter():
 				lowpassZi[i] = signal.lfilter_zi(lowpassB, lowpassA) * averagedata[i][0]
 				bandpassZi[i] = signal.lfilter_zi(bandpassB, bandpassA) * averagedata[i][0]
 				highpassZi[i] = signal.lfilter_zi(highpassB, highpassA) * averagedata[i][0]
+				multibandZi[i] = signal.lfilter_zi(multibandB, multibandA) * averagedata[i][0]
 			init = False
 
 			#TODO: init filters again when turned on
