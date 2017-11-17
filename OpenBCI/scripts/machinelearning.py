@@ -13,6 +13,8 @@ DataSet = []
 predictSet = []
 DataSetLabels = [] #r1 = 0, u1 = 1, l1 = 2, d1 = 3, c1 = 4
 convertedDataSet = [[]]
+convertedCh0 = [[]]
+convertedCh1 = [[]]
 convertedPredictData = [[]]
 
 
@@ -21,9 +23,9 @@ def main():
     AllData, predictData = readFile()
     arrangeDataset(AllData, predictData)
     extractFeatures() #calculate different features of time-series.
-    clf = createAndTrain() #switch to loadAndTrain() if you want to load previous machine-learning-state
+    #clf = createAndTrain() #switch to loadAndTrain() if you want to load previous machine-learning-state
     #saveMachinestate(clf) #if you want to save the state of classifier
-    predict(clf) #predict with given classifier.
+    #predict(clf) #predict with given classifier.
 
 
 def readFile():
@@ -39,7 +41,7 @@ def readFile():
 
 
 def arrangeDataset(AllData, predictData):
-    global Dataset, predictSet, convertedDataSet, convertedPredictData
+    global Dataset, predictSet, convertedDataSet, convertedPredictData, convertedCh0, convertedCh1
 
     DataSet = AllData.split(':')
     predictSet = predictData.split(':')
@@ -52,13 +54,20 @@ def arrangeDataset(AllData, predictData):
         featuretype = feature[0]
         feature.pop(0)
         convertedDataSet.append(map(float, feature))
-        appendLabel(featuretype)
+        chIndex = getChannelIndexAndAppendLabel(featuretype)
+        if chIndex == 0:
+            convertedCh0.append(map(float, feature))
+        if chIndex == 1:
+            convertedCh1.append(map(float, feature))
 
 
         #pops the two empty lists at index 0 and end-index
         if i == (len(DataSet) - 1):
             convertedDataSet.pop(0)
+            convertedCh0.pop(0)
+            convertedCh1.pop(0)
             convertedDataSet.pop(len(DataSet) -1)
+
             #print(convertedDataSet)
     for i in range(len(predictSet)):
             predictionFeature = [] #this is just for trying to predict a given dataset
@@ -73,7 +82,9 @@ def arrangeDataset(AllData, predictData):
                 convertedPredictData.pop(0)
                 convertedPredictData.pop(len(predictSet) - 1)
 
-def appendLabel(featuretype):
+
+
+def getChannelIndexAndAppendLabel(featuretype):
     global DataSetLabels
 
     if featuretype == 'r1' or featuretype == 'r0':
@@ -87,12 +98,17 @@ def appendLabel(featuretype):
     if featuretype == 'c1' or featuretype == 'c0':
         DataSetLabels.append(4)
 
+    if '0' in featuretype:
+        return 0
+    if '1' in featuretype:
+        return 1
 
 
 def createAndTrain():
     global convertedDataSet, convertedPredictData, DataSetLabels
 
     X = np.array(convertedDataSet)
+
     Y = np.array(map(float, DataSetLabels))
     #print(Y)
     clf = LinearSVC()
@@ -124,19 +140,39 @@ def predict(clf):
 
 
 def extractFeatures():
-    global convertedDataSet
-    standardSet = np.std(convertedDataSet, axis = 1) #prints the standard-deviation of the 500 samples, for all movementdirections
-    covSet = np.cov(convertedDataSet, rowvar = True)
-    mean = np.mean(convertedDataSet, axis = 1)
-    var = np.var(convertedDataSet, axis = 1)
-    #minimumCh1Ch2 = np.fmin(convertedDataSetChannel1, convertedDataSetChannel2)#can be checked to make an array of the minimum value between sample n in both channels
-    minimum = np.amin(convertedDataSet, axis = 1)#find minimum of all 500 samples for the 23 directions.
-    maximum = np.amax(convertedDataSet, axis = 1)#find maximum of all 500 samples for the 23 directions
-    #absolute = np.absolute(convertedDataSet) Blir et 2D-array fordi den tar absoluttverdien til alle samples, for alle retninger. What to do??
+    global convertedDataSet, convertedCh0, convertedCh1
+    std = np.std(convertedDataSet, axis = 1) #prints the standard-deviation of the 500 samples, for all movementdirections
+    #cov = np.cov(convertedDataSet, rowvar = True)
 
+    mean = np.mean(convertedDataSet, axis = 1) #mean when not looking at channels seperately
+    meanCh0 = np.mean(convertedCh0, axis = 1)
+    meanCh1 = np.mean(convertedCh1, axis = 1)
+    var = np.var(convertedDataSet, axis = 1) #var when not looking at channels seperately
+    varCh0 = np.var(convertedCh0, axis = 1)
+    varCh1 = np.var(convertedCh0, axis = 1)
+    minimum = np.amin(convertedDataSet, axis = 1) #minimum when not looking at channels seperately
+    minimumCh0 = np.amin(convertedCh0, axis = 1)
+    minimumCh1 = np.amin(convertedCh1, axis = 1)
+    maximum = np.amax(convertedDataSet, axis = 1)#maximum when not looking at channels seperately
+    maximumCh0 = np.amax(convertedCh0, axis = 1)
+    maximumCh1 = np.amax(convertedCh1, axis = 1)
+
+    #absolute = np.absolute(convertedDataSet) Blir et 2D-array fordi den tar absoluttverdien til alle samples, for alle retninger. What to do?
+    compMean = np.subtract(np.mean(convertedCh0, axis = 1), np.mean(convertedCh1, axis = 1))
+    compStd = np.subtract(np.std(convertedCh0, axis = 1), np.std(convertedCh1, axis = 1))
+    compVar = np.subtract(np.var(convertedCh0, axis = 1), np.var(convertedCh1, axis = 1))
+    compMinimum = np.subtract(np.amin(convertedCh0, axis = 1), np.amin(convertedCh1, axis = 1))
+    compMaximum = np.subtract(np.amax(convertedCh0, axis = 1), np.amax(convertedCh1, axis = 1))
+    #compIndexMinimum = np.fmin(convertedCh0, convertedCh1)
+    #corr = np.correlate(convertedCh0, convertedCh1)
+    
+
+
+    #predictFeatures = [mean, var, min, max, compMean, compStd, compVar, compMin, compMax]
 
     #from here and down is for visualization purposes only.
-    visualizeFeature(var, "var")
+
+    visualizeFeature(compMaximum, "compare maximum") #need to have "compare" in string if you want to compare channels
 
 def visualizeFeature(visu, string):
     global DataSetLabels
@@ -144,34 +180,60 @@ def visualizeFeature(visu, string):
     visuValue = []
     visuDirection = []
 
+
+
+
     Y = np.array(map(float, DataSetLabels))
 
-    for i in range(len(Y)):
-        visuValue.append(visu[i])
-        if Y[i] == 0:
-            visuDirection.append('Right')
+    if 'compare' in string:
+        for i in range(len(Y)/2):
+            visuValue.append(visu[i])
+            if Y[i] == 0:
+                visuDirection.append('Right')
 
-        if Y[i] == 1:
-            visuDirection.append('Up')
+            if Y[i] == 1:
+                visuDirection.append('Up')
 
-        if Y[i] == 2:
-            visuDirection.append('Left')
+            if Y[i] == 2:
+                visuDirection.append('Left')
 
-        if Y[i] == 3:
-            visuDirection.append('Down')
+            if Y[i] == 3:
+                visuDirection.append('Down')
 
-        if Y[i] == 4:
-            visuDirection.append('Center')
+            if Y[i] == 4:
+                visuDirection.append('Center')
+
+    else:
+        for i in range(len(Y)):
+            visuValue.append(visu[i])
+            if Y[i] == 0:
+                visuDirection.append('Right')
+
+            if Y[i] == 1:
+                visuDirection.append('Up')
+
+            if Y[i] == 2:
+                visuDirection.append('Left')
+
+            if Y[i] == 3:
+                visuDirection.append('Down')
+
+            if Y[i] == 4:
+                visuDirection.append('Center')
+
+
 
 
     dictionary = {'Direction': visuDirection, '%s' % string: visuValue}
     dataframe = pd.DataFrame(dictionary, columns = ['Direction', '%s' % string])
     #print(dataframe)
-    g = sns.violinplot(y = dataframe.Direction, x = '%s' % string, data=dataframe, inner='quartile')
+    g = sns.violinplot(y = dataframe.Direction, x = '%s' % string, data=dataframe, inner='point')
     savestring = "featureFigures/" + string + ".png"
     plt.savefig(savestring, bbox_inches='tight')
     plt.close()
 
+    #numberOfMin = len(np.argmin(convertedDataSet, axis = 1))
+    #numberOfMax = len(np.argmax(convertedDataSet, axis = 1))
 
 
 
