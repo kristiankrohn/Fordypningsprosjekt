@@ -49,14 +49,16 @@ fps = None
 count = 0
 data = [],[],[],[],[],[],[],[]
 rawdata = [],[],[],[],[],[],[],[]
-averagedata = [],[],[],[],[],[],[],[],[],[]
+averagedata = [],[],[],[],[],[],[],[],[],[],[]
 displayUV = []
 df = 1
 
 averageShortData = [],[],[],[],[],[],[],[]
+averageShortDataAlone = [],[],[],[],[],[],[],[]
 average = np.zeros(nPlots)
 averageShort = np.zeros(nPlots)
-avgLength = 200
+averageShortAlone = np.zeros(nPlots)
+avgLength = 50
 avgShortLength = 25
 
 
@@ -159,6 +161,18 @@ def printData(sample):
 				while len(averageShortData[i]) >= avgShortLength:
 					averageShortData[i].pop(0)
 					print("Faen, abort abort abort!")
+
+			averageShortDataAlone[i].append(sample.channel_data[i])
+
+			if len(averageShortDataAlone[i]) == avgShortLength:
+				averageShortAlone[i] = averageShortAlone[i] + (averageShortDataAlone[i][-1]/avgShortLength) - (averageShortDataAlone[i][0]/avgShortLength)
+				#print(average[i])
+				averageShortDataAlone[i].pop(0)
+			else:
+				averageShortAlone[i] = sum(averageShortDataAlone[i])/len(averageShortDataAlone[i])
+				while len(averageShortDataAlone[i]) >= avgShortLength:
+					averageShortDataAlone[i].pop(0)
+					print("Faen, abort abort abort!")
 			#if i == 0:
 				#data[i].append(sample.channel_data[i])
 			if filtering:
@@ -166,6 +180,7 @@ def printData(sample):
 				if i == 0:
 					averagedata[8].append(sample.channel_data[i])
 					averagedata[9].append(sample.channel_data[i]-averageShort[i]-average[i])
+					averagedata[10].append(sample.channel_data[i]-averageShortAlone[i])
 			else:
 				data[i].append(sample.channel_data[i])
 				
@@ -234,8 +249,9 @@ def notchFilter():
 			appendData(x,i+2)
 
 		for i in range(1):
-			x = averagedata[8]
-			x, bandpassZi[i+2] = signal.lfilter(bandpassB, bandpassA, x, zi=bandpassZi[i+2])	
+			x = averagedata[10]
+			x, multibandZi[i+2] = signal.lfilter(multibandB, multibandA, x, zi=multibandZi[i+2])
+			#x, bandpassZi[i+2] = signal.lfilter(bandpassB, bandpassA, x, zi=bandpassZi[i+2])	
 			appendData(x,i+7)
 
 		for i in range(1):
@@ -244,7 +260,7 @@ def notchFilter():
 			x, highpassZi[i+4] = signal.lfilter(highpassB, highpassA, x, zi=highpassZi[i+4])
 			
 			appendData(x,i+6)
-		averagedata = [],[],[],[],[],[],[],[],[],[]
+		averagedata = [],[],[],[],[],[],[],[],[],[],[]
 
 def plot():
 	with(mutex):
@@ -283,7 +299,7 @@ def plot():
 			ax2 = plt.subplot(423)
 			legend, = plt.plot(x, data[i+1], label=label)
 			#legends.append(legend)
-		ax2.set_title("Average")
+		ax2.set_title("Long Average")
 		plt.ylabel('uV')
 		plt.xlabel('Seconds')
 		#ax2.ylabel('uV')
@@ -344,7 +360,8 @@ def plot():
 			ax8 = plt.subplot(426)
 			legend, = plt.plot(x, data[i+7], label=label)
 			#legends.append(legend)
-		ax8.set_title("Bandpass")
+		#ax8.set_title("Bandpass")
+		ax8.set_title("Short average")
 		#ax3.ylabel('uV')
 	plt.ylabel('uV')
 	plt.xlabel('Seconds')

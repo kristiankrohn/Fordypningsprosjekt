@@ -147,8 +147,8 @@ def printData(sample):	#This function is too slow, we are loosing data and fucki
 
 
 			if filtering:
-				averagedata[i].append((sample.channel_data[i]-average[i])-averageShort[i])
-				#averagedata[i].append(sample.channel_data[i]-average[i])
+				#averagedata[i].append((sample.channel_data[i]-average[i])-averageShort[i])
+				averagedata[i].append(sample.channel_data[i]-average[i])
 				#averagedata[i].append(sample.channel_data[i])
 				avgTimeData[i].append(timestamp)
 			
