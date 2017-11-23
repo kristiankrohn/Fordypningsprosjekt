@@ -10,6 +10,7 @@ from pyqtgraph.ptime import time
 import threading
 #from threading import Lock
 from scipy import signal
+import scipy.fftpack
 import matplotlib.pyplot as plt
 from numpy.random import randint
 import Tkinter as tk
@@ -26,7 +27,8 @@ nPlots = 8
 count = None
 #Filtersetup
 #Notchfilter
-window = 151
+#window = 151
+window = 3
 curves = []
 ptr = 0
 #data = [],[],[],[],[],[],[],[]
@@ -42,9 +44,10 @@ p = None
 init = True
 exit = False
 filtering = True
-bandstopFilter = False
+averageCondition = False
+bandstopFilter = True
 lowpassFilter = False
-bandpassFilter = True
+bandpassFilter = False
 app = QtGui.QApplication([])
 fs = 250.0
 f0 = 50.0
@@ -54,6 +57,7 @@ notchB, notchA = signal.iirnotch(w0, Q)
 
 #sample = board._read_serial_binary()
 notchZi = np.zeros([8,2])
+notchZi2 = np.zeros([8,2])
 #print(notchB)
 #print(notchA)
 #Butterworth lowpass filter
@@ -62,7 +66,8 @@ fk = 30
 Wn = fk/(fs/2) # Cutoff frequency
 lowpassB, lowpassA = signal.butter(N, Wn, output='ba')
 lowpassZi = np.zeros([8,N])
-
+DCnotchZi = np.zeros([8,1])
+DCnotchZi2 = np.zeros([8,1])
 
 #FIR bandpass filter
 hcc = 56.0/(fs/2) #highest cut, only used if multibandpass
@@ -112,44 +117,48 @@ def printData(sample):	#This function is too slow, we are loosing data and fucki
 	global avgTimeData, timeData, timestamp 
 	global average, avgLength, mutex
 	global averageShortData, avgShortLength
+	global averageCondition
 	with(mutex):
 		timestamp = tme.time()
 		#print(timestamp)
 		for i in range(nPlots):
 			#avg = 0
-			rawdata[i].append(sample.channel_data[i])
-			if len(rawdata[i]) == avgLength:
-				average[i] = average[i] + (rawdata[i][-1]/avgLength) - (rawdata[i][0]/avgLength)
-				#print(average[i])
-				rawdata[i].pop(0)
-			else:
-				average[i] = sum(rawdata[i])/len(rawdata[i])
-				while len(rawdata[i]) >= avgLength:
+			if averageCondition:
+				rawdata[i].append(sample.channel_data[i])
+				if len(rawdata[i]) == avgLength:
+					average[i] = average[i] + (rawdata[i][-1]/avgLength) - (rawdata[i][0]/avgLength)
+					#print(average[i])
 					rawdata[i].pop(0)
-					print("Faen, abort abort abort!")
+				else:
+					average[i] = sum(rawdata[i])/len(rawdata[i])
+					while len(rawdata[i]) >= avgLength:
+						rawdata[i].pop(0)
+						print("Faen, abort abort abort!")
 
 
 
 
-			averageShortData[i].append(sample.channel_data[i]-average[i])
-			
-			if len(averageShortData[i]) == avgShortLength:
-				averageShort[i] = averageShort[i] + (averageShortData[i][-1]/avgShortLength) - (averageShortData[i][0]/avgShortLength)
-				#print(average[i])
-				averageShortData[i].pop(0)
-			else:
-				averageShort[i] = sum(averageShortData[i])/len(averageShortData[i])
-				while len(averageShortData[i]) >= avgShortLength:
+				averageShortData[i].append(sample.channel_data[i]-average[i])
+				
+				if len(averageShortData[i]) == avgShortLength:
+					averageShort[i] = averageShort[i] + (averageShortData[i][-1]/avgShortLength) - (averageShortData[i][0]/avgShortLength)
+					#print(average[i])
 					averageShortData[i].pop(0)
-					print("Faen, abort abort abort!")					
-
+				else:
+					averageShort[i] = sum(averageShortData[i])/len(averageShortData[i])
+					while len(averageShortData[i]) >= avgShortLength:
+						averageShortData[i].pop(0)
+						print("Faen, abort abort abort!")					
+			else:
+				average = np.zeros(nPlots)
+				averageShort = np.zeros(nPlots)
 			#print(averageShort[i])
 
 
 			if filtering:
 				#averagedata[i].append((sample.channel_data[i]-average[i])-averageShort[i])
-				averagedata[i].append(sample.channel_data[i]-average[i])
-				#averagedata[i].append(sample.channel_data[i])
+				#averagedata[i].append(sample.channel_data[i]-average[i])
+				averagedata[i].append(sample.channel_data[i])
 				avgTimeData[i].append(timestamp)
 			
 			else:
@@ -184,27 +193,41 @@ def filter():
 	global averagedata, data, window, init, initNotch, initLowpass, initBandpass
 	global bandstopFilter, lowpassFilter, bandpassFilter
 	global avgTimeData, timeData, mutex
+	global DCnotchZi, DCnotchZi2, notchZi2
+	DcNotchA = [1 , -0.9] 
+	DcNotchB = [1,-1]
 	with(mutex):
 		
 		if init == True: #Gjor dette til en funksjon, input koeff, return zi
 			
 			for i in range(nPlots):
 				notchZi[i] = signal.lfilter_zi(notchB, notchA) * averagedata[i][0]
+				notchZi2[i] = signal.lfilter_zi(notchB, notchA) * averagedata[i][0]
 				lowpassZi[i] = signal.lfilter_zi(lowpassB, lowpassA) * averagedata[i][0]
 				bandpassZi[i] = signal.lfilter_zi(bandpassB, bandpassA) * averagedata[i][0]
+				DCnotchZi[i] = signal.lfilter_zi(DcNotchB, DcNotchA) * averagedata[i][0]
+				DCnotchZi2[i] = signal.lfilter_zi(DcNotchB, DcNotchA) * averagedata[i][0]
 			init = False
 
 			#TODO: init filters again when turned on
 		for i in range(nPlots):
 			x = averagedata[i]
 			xt = avgTimeData[i]
+
+			x, DCnotchZi[i] = signal.lfilter(DcNotchB,DcNotchA,x,zi=DCnotchZi[i]);
+			#x, DCnotchZi2[i] = signal.lfilter(DcNotchB,DcNotchA,x,zi=DCnotchZi2[i]);
+
 			if bandstopFilter:
 				x, notchZi[i] = signal.lfilter(notchB, notchA, x, zi=notchZi[i])
+				x, notchZi2[i] = signal.lfilter(notchB, notchA, x, zi=notchZi2[i])
 
 			if lowpassFilter:
 				x, lowpassZi[i] = signal.lfilter(lowpassB, lowpassA, x, zi=lowpassZi[i])
 			
 			if bandpassFilter:
+				
+				x, DCnotchZi[i] = signal.lfilter(DcNotchB,DcNotchA,x,zi=DCnotchZi[i]);
+				x, DCnotchZi2[i] = signal.lfilter(DcNotchB,DcNotchA,x,zi=DCnotchZi2[i]);
 				x, bandpassZi[i] = signal.lfilter(bandpassB, bandpassA, x, zi=bandpassZi[i])
 
 
@@ -417,6 +440,9 @@ def keys():
 				print("Invalid input")
 		elif string == "printtemp":
 			ttk.opentemp()
+		elif string == "fftplot":
+			fftplot(0)
+			plt.show()
 
 def save():
 	np.savetxt('data.out', data[1])
@@ -424,7 +450,22 @@ def save():
 def gui():
 	ttk.guiloop()
 
+def fftplot(channel, title=""):
+	global fs
+	y = data[channel]
+	# Number of samplepoints
+	N = len(y)
+	# sample spacing
+	T = 1.0 / fs
+	x = np.linspace(0.0, N*T, N)
+	yf = scipy.fftpack.fft(y)
+	xf = np.linspace(0.0, 1.0/(2.0*T), N/2)
 
+	fig, ax = plt.subplots()
+	ax.plot(xf, 2.0/N * np.abs(yf[:N//2]))
+	ax.set_title(title)
+	plt.ylabel('uV')
+	plt.xlabel('Frequency (Hz)')
 
 def main():
 	global graphVar, exit

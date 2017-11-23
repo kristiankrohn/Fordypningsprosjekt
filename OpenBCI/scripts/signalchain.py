@@ -13,7 +13,7 @@ from scipy import signal
 import matplotlib.pyplot as plt
 from numpy.random import randn
 #import tkinter
-
+import scipy.fftpack
 mutex = Lock()
 
 #Helmetsetup
@@ -93,11 +93,16 @@ filtering = True
 bandstopFilter = False
 lowpassFilter = False
 bandpassFilter = True
-
-
+f100 = 100.0
+w100 = f100/(fs/2)
+bNotch100, aNotch100 = signal.iirnotch(w100, Q)
+notchZi100 = np.zeros([8,2])
 sample = board._read_serial_binary()
 notchZi = np.zeros([8,2])
+notchZi2 = np.zeros([8,2])
 init = True
+DCnotchZi = np.zeros([8,1])
+DCnotchZi2 = np.zeros([8,1])
 
 #Butterworth lowpass filter
 N  = 4    # Filter order
@@ -212,54 +217,78 @@ def notchFilter():
 	global averagedata, data, window, init, initNotch, initLowpass, initBandpass
 	global bandstopFilter, lowpassFilter, bandpassFilter
 	global multibandB, multibandA, multibandZi
-
+	global DCnotchZi, DCnotchZi2, notchZi2
+	global bNotch100, aNotch100, notchZi100
+	DcNotchA = [1 , -0.98] 
+	DcNotchB = [1,-1]
 	with(mutex):
 		
 		if init == True: #Gjor dette til en funksjon, input koeff, return zi
 			for i in range(nPlots):
+				notchZi100[i] = signal.lfilter_zi(bNotch100, aNotch100) * averagedata[i][0]
 				notchZi[i] = signal.lfilter_zi(notchB, notchA) * averagedata[i][0]
+				notchZi2[i] = signal.lfilter_zi(notchB, notchA) * averagedata[i][0]
 				lowpassZi[i] = signal.lfilter_zi(lowpassB, lowpassA) * averagedata[i][0]
 				bandpassZi[i] = signal.lfilter_zi(bandpassB, bandpassA) * averagedata[i][0]
 				highpassZi[i] = signal.lfilter_zi(highpassB, highpassA) * averagedata[i][0]
 				multibandZi[i] = signal.lfilter_zi(multibandB, multibandA) * averagedata[i][0]
+				DCnotchZi[i] = signal.lfilter_zi(DcNotchB, DcNotchA) * averagedata[i][0]
+				DCnotchZi2[i] = signal.lfilter_zi(DcNotchB, DcNotchA) * averagedata[i][0]
 			init = False
-		appendData(averagedata[8],0)
-		appendData(averagedata[0],1)
+		#appendData(averagedata[10],3) #Short average
+		#appendData(averagedata[9],2) #Dual average
+		appendData(averagedata[8],0) #Raw Data
+		appendData(averagedata[0],1) #Long Average
 			#TODO: init filters again when turned on
 		for i in range(1):
-			x = averagedata[i]
-			x, bandpassZi[i] = signal.lfilter(bandpassB, bandpassA, x, zi=bandpassZi[i])	
-			appendData(x,i+5)
+			x = averagedata[0] #DC notch
+			#x, notchZi[i+6] = signal.lfilter(notchB, notchA, x, zi=notchZi[i+6])
+			x, DCnotchZi[i] = signal.lfilter(DcNotchB,DcNotchA,x,zi=DCnotchZi[i]);
+			x, notchZi[i+2] = signal.lfilter(notchB, notchA, x, zi=notchZi[i+2])
+			#x, bandpassZi[i] = signal.lfilter(bandpassB, bandpassA, x, zi=bandpassZi[i])	
+			appendData(x,i+2)
 		
 		for i in range(1):
-			x = averagedata[i]
-			x, notchZi[i] = signal.lfilter(notchB, notchA, x, zi=notchZi[i])
-			x, highpassZi[i] = signal.lfilter(highpassB, highpassA, x, zi=highpassZi[i])
-			appendData(x,i+4)
-
-		for i in range(1):
-			x = averagedata[9]
-			x, multibandZi[i] = signal.lfilter(multibandB, multibandA, x, zi=multibandZi[i])
-			#x, highpassZi[i+2] = signal.lfilter(highpassB, highpassA, x, zi=highpassZi[i+2])
+			x = averagedata[i] #Dual DC notch
+			#x, notchZi[i] = signal.lfilter(notchB, notchA, x, zi=notchZi[i])
+			x, DCnotchZi[i+3] = signal.lfilter(DcNotchB,DcNotchA,x,zi=DCnotchZi[i+3]);
+			x, DCnotchZi2[i+3] = signal.lfilter(DcNotchB,DcNotchA,x,zi=DCnotchZi2[i+3]);
+			x, notchZi[i+3] = signal.lfilter(notchB, notchA, x, zi=notchZi[i+3])
+			#x, highpassZi[i] = signal.lfilter(highpassB, highpassA, x, zi=highpassZi[i])
 			appendData(x,i+3)
 
+		for i in range(1):
+			x = averagedata[9] #Dual average notch
+			x, notchZi[i+4] = signal.lfilter(notchB, notchA, x, zi=notchZi[i+4])
+			x, notchZi2[i+4] = signal.lfilter(notchB, notchA, x, zi=notchZi2[i+4])
+			#x, multibandZi[i] = signal.lfilter(multibandB, multibandA, x, zi=multibandZi[i])
+			#x, highpassZi[i+2] = signal.lfilter(highpassB, highpassA, x, zi=highpassZi[i+2])
+			appendData(x,i+4)
+
 		for i in range (1):
-			x = averagedata[i]
-			x, notchZi[i+2] = signal.lfilter(notchB, notchA, x, zi=notchZi[i+2])
-			appendData(x,i+2)
+			#x = averagedata[1] # Highpass Notch Average
+			x = averagedata[0] # Highpass Notch
+			x, highpassZi[i+5] = signal.lfilter(highpassB, highpassA, x, zi=highpassZi[i+5])
+			x, notchZi[i+5] = signal.lfilter(notchB, notchA, x, zi=notchZi[i+5])
+			appendData(x,i+5)
+
+		for i in range(1):
+			x = averagedata[1] #Bandpass average
+			#x, multibandZi[i+2] = signal.lfilter(multibandB, multibandA, x, zi=multibandZi[i+2])
+			x, bandpassZi[i+6] = signal.lfilter(bandpassB, bandpassA, x, zi=bandpassZi[i+6])	
+			appendData(x,i+6)
 
 		for i in range(1):
 			x = averagedata[10]
-			x, multibandZi[i+2] = signal.lfilter(multibandB, multibandA, x, zi=multibandZi[i+2])
-			#x, bandpassZi[i+2] = signal.lfilter(bandpassB, bandpassA, x, zi=bandpassZi[i+2])	
-			appendData(x,i+7)
-
-		for i in range(1):
-			x = averagedata[8]
-			x, notchZi[i+4] = signal.lfilter(notchB, notchA, x, zi=notchZi[i+4])
-			x, highpassZi[i+4] = signal.lfilter(highpassB, highpassA, x, zi=highpassZi[i+4])
+			x, DCnotchZi[i+7] = signal.lfilter(DcNotchB,DcNotchA,x,zi=DCnotchZi[i+7]);
+			#x, DCnotchZi2[i+7] = signal.lfilter(DcNotchB,DcNotchA,x,zi=DCnotchZi2[i+7]);
+			x, notchZi[i+7] = signal.lfilter(notchB, notchA, x, zi=notchZi[i+7])
+			x, notchZi2[i+7] = signal.lfilter(notchB, notchA, x, zi=notchZi2[i+7])
+			x, notchZi2[i+6] = signal.lfilter(notchB, notchA, x, zi=notchZi2[i+6])
+			x, notchZi100[i+7] = signal.lfilter(bNotch100, aNotch100, x, zi=notchZi100[i+7])
+			#x, highpassZi[i+4] = signal.lfilter(highpassB, highpassA, x, zi=highpassZi[i+4])
 			
-			appendData(x,i+6)
+			appendData(x,i+7) #Short average notch
 		averagedata = [],[],[],[],[],[],[],[],[],[],[]
 
 def plot():
@@ -281,7 +310,7 @@ def plot():
 		x = np.arange(0, len(data[1])/fs, 1/fs)
 		
 		for i in range(1):
-			label = "Fp %d" %(i+1)
+			label = "X %d" %(i+1)
 			#print(label)
 			#label = tuple([label])
 			ax1 = plt.subplot(421)
@@ -299,7 +328,7 @@ def plot():
 			ax2 = plt.subplot(423)
 			legend, = plt.plot(x, data[i+1], label=label)
 			#legends.append(legend)
-		ax2.set_title("Long Average")
+		ax2.set_title("Raw data - Average, N = 50")
 		plt.ylabel('uV')
 		plt.xlabel('Seconds')
 		#ax2.ylabel('uV')
@@ -310,58 +339,62 @@ def plot():
 			ax3 = plt.subplot(425)
 			legend, = plt.plot(x, data[i+2], label=label)
 			#legends.append(legend)
-		ax3.set_title("Notch + average")
+		ax3.set_title("DC Notch + 50Hz Notch")
 		plt.ylabel('uV')
 		plt.xlabel('Seconds')
 		for i in range(1):
 			label = "Notch Fp %d" %(i+1)
 			#print(label)
 			#label = tuple([label])
-			ax4 = plt.subplot(422)
+			ax4 = plt.subplot(427)
 			legend, = plt.plot(x, data[i+3], label=label)
 			#legends.append(legend)
-		ax4.set_title("Dual average + Lowpass")
+		ax4.set_title("Dual DC Notch + 50Hz notch")
 		plt.ylabel('uV')
 		plt.xlabel('Seconds')
 		for i in range(1):
 			label = "Notch Fp %d" %(i+1)
 			#print(label)
 			#label = tuple([label])
-			ax5 = plt.subplot(424)
+			ax5 = plt.subplot(422)
 			legend, = plt.plot(x, data[i+4], label=label)
 			#legends.append(legend)
-		ax5.set_title("Highpass + notch + average")
+		ax5.set_title("Raw data - Dual Average(N=50,25) + Dual 50Hz Notch")
 		plt.ylabel('uV')
 		plt.xlabel('Seconds')
 		for i in range(1):
 			label = "Notch Fp %d" %(i+1)
 			#print(label)
 			#label = tuple([label])
-			ax6 = plt.subplot(428)
+			ax6 = plt.subplot(424)
 			legend, = plt.plot(x, data[i+5], label=label)
 			#legends.append(legend)
-		ax6.set_title("Bandpass + average")
+		#ax6.set_title("Average + Highpass + Notch(50Hz)")
+
+		ax6.set_title("Highpass + Notch(50Hz)")
 		plt.ylabel('uV')
 		plt.xlabel('Seconds')
+		
 		for i in range(1):
-			label = "Notch Fp %d" %(i+1)
+			#label = "Notch Fp %d" %(i+1)
 			#print(label)
 			#label = tuple([label])
-			ax7 = plt.subplot(427)
+			ax7 = plt.subplot(426)
 			legend, = plt.plot(x, data[i+6], label=label)
-			#legends.append(legend)
-		ax7.set_title("Highpass + Notch")
+			legends.append(legend)
+		
+		ax7.set_title("Average + Bandpass")
 		plt.ylabel('uV')
 		plt.xlabel('Seconds')
 		for i in range(1):
 			label = "Notch Fp %d" %(i+1)
 			#print(label)
 			#label = tuple([label])
-			ax8 = plt.subplot(426)
+			ax8 = plt.subplot(428)
 			legend, = plt.plot(x, data[i+7], label=label)
 			#legends.append(legend)
-		#ax8.set_title("Bandpass")
-		ax8.set_title("Short average")
+		ax8.set_title("Septa Notch (0Hz + 4x50Hz + 2x100Hz)")
+		#ax8.set_title("Short average")
 		#ax3.ylabel('uV')
 	plt.ylabel('uV')
 	plt.xlabel('Seconds')
@@ -369,7 +402,61 @@ def plot():
 	#TODO: x axis in seconds
 	#plt.legend(handles=legends)
 	legends = []
+	plt.subplots_adjust(hspace=0.6)
 	plt.show()
+
+def fftall():
+	with(mutex):
+		while len(data[0]) > nSamples:
+			for i in range(nPlots):
+				data[i].pop(0)
+		plt.figure(1)
+		ax = plt.subplot(421)
+		fftplot(0, "Raw data", ax)
+		
+		ax = plt.subplot(423)
+		fftplot(1, "Raw data - Average, N = 50", ax)
+		
+		ax = plt.subplot(425)
+		fftplot(2, "DC Notch + 50Hz Notch", ax)
+		
+		#plt.subplot(427)
+		#fftplot(3, "Dual DC Notch + 50Hz notch")
+		
+		ax = plt.subplot(422)
+		fftplot(4, "Raw data - Dual Average(N=50,25) + Dual 50Hz Notch", ax)
+		
+		ax = plt.subplot(424)
+		#fftplot(5, "Average + Highpass + Notch(50Hz)", ax)
+		fftplot(5, "Highpass + Notch(50Hz)", ax)
+		ax = plt.subplot(426)
+		fftplot(6, "Average + Bandpass", ax)
+		
+		ax = plt.subplot(428)
+		fftplot(7, "Septa Notch (0Hz + 4x50Hz + 2x100Hz)", ax)		
+		
+		plt.subplots_adjust(hspace=0.6)
+		plt.show()
+
+
+def fftplot(channel, title="", ax=None):
+	global fs
+	y = data[channel]
+	# Number of samplepoints
+	N = len(y)
+	# sample spacing
+	T = 1.0 / fs
+	x = np.linspace(0.0, N*T, N)
+	yf = scipy.fftpack.fft(y)
+	xf = np.linspace(0.0, 1.0/(2.0*T), N/2)
+
+	if ax == None:
+		fig, ax = plt.subplots()
+	ax.plot(xf, 2.0/N * np.abs(yf[:N//2]))
+	ax.set_title(title)
+	plt.ylabel('uV')
+	plt.xlabel('Frequency (Hz)')
+
 
 def plotAll():
 	legends = []
@@ -443,7 +530,8 @@ def keys():
 			#plotAllThread = threading.Thread(target=plotAll,args=())
 			#plotAllThread.start()
 			#plotAllThread.join()
-
+		elif string == "fftall":
+			fftall()
 #def gui():
 	#root = Tk()
 

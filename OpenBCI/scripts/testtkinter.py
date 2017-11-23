@@ -21,7 +21,7 @@ sleeping = False
 startMove = tme.time()
 endMode = tme.time()
 z = 3
-length = 150
+length = 750
 
 class Alien(object):
 	def __init__(self, canvas, *args, **kwargs):
@@ -121,9 +121,9 @@ class Alien(object):
 			right = True
 			center = False
 			cmd = 3
-			threadSave = threading.Thread(target=saveTempData, args=(cmd,))
-			threadSave.setDaemon(True)
-			threadSave.start()
+			#threadSave = threading.Thread(target=saveTempData, args=(cmd,))
+			#threadSave.setDaemon(True)
+			#threadSave.start()
 			tme.sleep(1)
 			self.vx = -speed
 
@@ -132,9 +132,9 @@ class Alien(object):
 			left = True
 			center = False
 			cmd = 7
-			threadSave = threading.Thread(target=saveTempData, args=(cmd,))
-			threadSave.setDaemon(True)
-			threadSave.start()
+			#threadSave = threading.Thread(target=saveTempData, args=(cmd,))
+			#threadSave.setDaemon(True)
+			#threadSave.start()
 			tme.sleep(1)
 			self.vx = speed
 
@@ -143,9 +143,9 @@ class Alien(object):
 			down = True
 			center = False
 			cmd = 9
-			threadSave = threading.Thread(target=saveTempData, args=(cmd,))
-			threadSave.setDaemon(True)
-			threadSave.start()
+			#threadSave = threading.Thread(target=saveTempData, args=(cmd,))
+			#threadSave.setDaemon(True)
+			#threadSave.start()
 			tme.sleep(1)
 			self.vy = -speed
 			
@@ -154,9 +154,9 @@ class Alien(object):
 			up = True
 			center = False
 			cmd = 1
-			threadSave = threading.Thread(target=saveTempData, args=(cmd,))
-			threadSave.setDaemon(True)
-			threadSave.start()
+			#threadSave = threading.Thread(target=saveTempData, args=(cmd,))
+			#threadSave.setDaemon(True)
+			#threadSave.start()
 			tme.sleep(1)
 			self.vy = speed
 
@@ -209,7 +209,7 @@ def saveTempData(direction):
 	numCh = 2
 	
 	if direction != 5:
-		startTime = tme.time() + 0.5
+		startTime = tme.time() + 0.4
 	else: 
 		startTime = tme.time()
 	
@@ -510,15 +510,15 @@ def opentemp():
 		feature1 = DataSet[i].split(',')
 		featuretype1 = feature1[0]
 		feature1.pop(0)
-		if featuretype1 == 'u0':
+		if featuretype1 == 'ur0':
 			title = "Up"
-		elif featuretype1 == 'd0':
+		elif featuretype1 == 'dr0':
 			title = "Down"
-		elif featuretype1 == 'l0':
+		elif featuretype1 == 'lr0':
 			title = "Left"
-		elif featuretype1 == 'r0':
+		elif featuretype1 == 'rr0':
 			title = "Right"
-		elif featuretype1 == 'c0':
+		elif featuretype1 == 'cr0':
 			title = "Center"
 			#care = False
 		else:
