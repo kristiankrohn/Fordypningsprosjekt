@@ -97,6 +97,7 @@ f100 = 100.0
 w100 = f100/(fs/2)
 bNotch100, aNotch100 = signal.iirnotch(w100, Q)
 notchZi100 = np.zeros([8,2])
+
 sample = board._read_serial_binary()
 notchZi = np.zeros([8,2])
 notchZi2 = np.zeros([8,2])
@@ -266,8 +267,8 @@ def notchFilter():
 			appendData(x,i+4)
 
 		for i in range (1):
-			#x = averagedata[1] # Highpass Notch Average
-			x = averagedata[0] # Highpass Notch
+			x = averagedata[1] # Highpass Notch Average
+			#x = averagedata[0] # Highpass Notch
 			x, highpassZi[i+5] = signal.lfilter(highpassB, highpassA, x, zi=highpassZi[i+5])
 			x, notchZi[i+5] = signal.lfilter(notchB, notchA, x, zi=notchZi[i+5])
 			appendData(x,i+5)
@@ -369,9 +370,9 @@ def plot():
 			ax6 = plt.subplot(424)
 			legend, = plt.plot(x, data[i+5], label=label)
 			#legends.append(legend)
-		#ax6.set_title("Average + Highpass + Notch(50Hz)")
+		ax6.set_title("Average + Highpass + Notch(50Hz)")
 
-		ax6.set_title("Highpass + Notch(50Hz)")
+		#ax6.set_title("Highpass + Notch(50Hz)")
 		plt.ylabel('uV')
 		plt.xlabel('Seconds')
 		
@@ -427,8 +428,8 @@ def fftall():
 		fftplot(4, "Raw data - Dual Average(N=50,25) + Dual 50Hz Notch", ax)
 		
 		ax = plt.subplot(424)
-		#fftplot(5, "Average + Highpass + Notch(50Hz)", ax)
-		fftplot(5, "Highpass + Notch(50Hz)", ax)
+		fftplot(5, "Average + Highpass + Notch(50Hz)", ax)
+		#fftplot(5, "Highpass + Notch(50Hz)", ax)
 		ax = plt.subplot(426)
 		fftplot(6, "Average + Bandpass", ax)
 		
@@ -447,16 +448,23 @@ def fftplot(channel, title="", ax=None):
 	# sample spacing
 	T = 1.0 / fs
 	x = np.linspace(0.0, N*T, N)
-	yf = scipy.fftpack.fft(y)
+	from scipy.signal import blackman
+	w = blackman(N)
+	yf = scipy.fftpack.fft(y*w)
 	xf = np.linspace(0.0, 1.0/(2.0*T), N/2)
 
 	if ax == None:
 		fig, ax = plt.subplots()
-	ax.plot(xf, 2.0/N * np.abs(yf[:N//2]))
-	ax.set_title(title)
-	plt.ylabel('uV')
-	plt.xlabel('Frequency (Hz)')
 
+	#print(yf)
+	yf = 20 * np.log10(2.0/N * (np.abs(yf[:N//2])))
+	#print(yf)
+	#ax.plot(xf, 2.0/N * np.abs(yf[:N//2]))
+	ax.plot(xf, yf)
+	ax.set_title(title)
+	plt.ylabel('dBuV')
+	plt.xlabel('Frequency (Hz)')
+	#plt.yscale('log')
 
 def plotAll():
 	legends = []

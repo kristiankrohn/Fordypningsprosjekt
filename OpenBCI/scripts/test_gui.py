@@ -54,10 +54,16 @@ f0 = 50.0
 Q = 50
 w0 = f0/(fs/2)
 notchB, notchA = signal.iirnotch(w0, Q) 
+f100 = 100.0
+w100 = f100/(fs/2)
+bNotch100, aNotch100 = signal.iirnotch(w100, Q)
 
 #sample = board._read_serial_binary()
 notchZi = np.zeros([8,2])
 notchZi2 = np.zeros([8,2])
+notchZi3 = np.zeros([8,2])
+notchZi1001 = np.zeros([8,2])
+notchZi1002 = np.zeros([8,2])
 #print(notchB)
 #print(notchA)
 #Butterworth lowpass filter
@@ -174,10 +180,11 @@ def printData(sample):	#This function is too slow, we are loosing data and fucki
 			#for i in range(nPlots):
 				#rawdata[i].pop(0)
 
-		if len(averagedata[0]) >= window:					
-			threadFilter = threading.Thread(target=filter,args=())
-			threadFilter.setDaemon(True)
-			threadFilter.start()
+	if len(averagedata[0]) >= window:					
+		threadFilter = threading.Thread(target=filter,args=())
+		#threadFilter.setDaemon(True)
+		threadFilter.start()
+		#print(len(averagedata[0]))
 
 def appendData(y, i, xt):
 	global data
@@ -189,11 +196,12 @@ def appendData(y, i, xt):
 def filter():
 	global lowpassB, lowpassA, lowpassZi 
 	global bandpassB, bandpassA, bandpassZi
-	global notchB, notchA, notchZi 
+	global notchB, notchA, notchZi, notchZi2, notchZi3 
 	global averagedata, data, window, init, initNotch, initLowpass, initBandpass
 	global bandstopFilter, lowpassFilter, bandpassFilter
 	global avgTimeData, timeData, mutex
-	global DCnotchZi, DCnotchZi2, notchZi2
+	global DCnotchZi, DCnotchZi2
+	global bNotch100, aNotch100, notchZi1001, notchZi1002
 	DcNotchA = [1 , -0.9] 
 	DcNotchB = [1,-1]
 	with(mutex):
@@ -203,6 +211,9 @@ def filter():
 			for i in range(nPlots):
 				notchZi[i] = signal.lfilter_zi(notchB, notchA) * averagedata[i][0]
 				notchZi2[i] = signal.lfilter_zi(notchB, notchA) * averagedata[i][0]
+				notchZi3[i] = signal.lfilter_zi(notchB, notchA) * averagedata[i][0]
+				notchZi1001[i] = signal.lfilter_zi(bNotch100, aNotch100) * averagedata[i][0]
+				notchZi1002[i] = signal.lfilter_zi(bNotch100, aNotch100) * averagedata[i][0]
 				lowpassZi[i] = signal.lfilter_zi(lowpassB, lowpassA) * averagedata[i][0]
 				bandpassZi[i] = signal.lfilter_zi(bandpassB, bandpassA) * averagedata[i][0]
 				DCnotchZi[i] = signal.lfilter_zi(DcNotchB, DcNotchA) * averagedata[i][0]
@@ -220,7 +231,9 @@ def filter():
 			if bandstopFilter:
 				x, notchZi[i] = signal.lfilter(notchB, notchA, x, zi=notchZi[i])
 				x, notchZi2[i] = signal.lfilter(notchB, notchA, x, zi=notchZi2[i])
-
+				x, notchZi3[i] = signal.lfilter(notchB, notchA, x, zi=notchZi3[i])
+				x, notchZi1001[i] = signal.lfilter(notchB, notchA, x, zi=notchZi1001[i])
+				x, notchZi1002[i] = signal.lfilter(notchB, notchA, x, zi=notchZi1002[i])
 			if lowpassFilter:
 				x, lowpassZi[i] = signal.lfilter(lowpassB, lowpassA, x, zi=lowpassZi[i])
 			
@@ -395,7 +408,7 @@ def keys():
 			#save()
 		elif string == "start":
 			threadDataCatcher = threading.Thread(target=dataCatcher,args=())
-			threadDataCatcher.setDaemon(True)
+			#threadDataCatcher.setDaemon(True)
 			threadDataCatcher.start()
 		elif string == "graph":
 			graphVar = True
@@ -496,7 +509,8 @@ def main():
 	if not exit:
 		graph()	
 
-	
+	while not exit:
+		pass
 
 
 if __name__ == '__main__':

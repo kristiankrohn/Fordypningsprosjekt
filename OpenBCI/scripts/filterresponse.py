@@ -74,11 +74,16 @@ Wn = fk/(fs/2) # Cutoff frequency
 #b, a = signal.butter(N, Wn, output='ba')
 
 
-a = [1 , -0.9,0.0000000000001] 
-b = [1,-1,0.000000000000001]
+#a = [1 , -0.9,0.0000000000001] 
+#b = [1,-1,0.000000000000001]
+
+a = [1 , -0.9] 
+b = [1,-1]
+
+
 #a = [1 , -2,1] 
 #b = [1,-2,1]
-b, a = signal.iirfilter(1, 0, btype='bandstop')
+#b, a = signal.iirfilter(1, 0, btype='bandstop')
 print(b)
 print(a)
 #bHat = signal.convolve(b, b, mode='full')
@@ -273,9 +278,10 @@ def plot_filterz(b, a=1):
 	plt.subplot(224)
 	plot_stepz(b, a)
 	plt.subplots_adjust(hspace=0.5, wspace = 0.3)
+
 legends = []
-#np.savetxt('bcoeff.out', bTot)
-#np.savetxt('acoeff.out', aTot)
+np.savetxt('bcoeff.out', bTot)
+np.savetxt('acoeff.out', aTot)
 plot_filterz(bTot, aTot)
 #ax = plt.subplot(211)
 #plot_freqz(ax, bTot, aTot)

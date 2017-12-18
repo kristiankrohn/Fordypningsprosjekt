@@ -12,7 +12,7 @@ from scipy import signal
 import os, shutil
 
 size = 1000
-speed = 30
+speed = 40
 ballsize = 30
 startButton = None
 w = None
@@ -21,7 +21,7 @@ sleeping = False
 startMove = tme.time()
 endMode = tme.time()
 z = 3
-length = 750
+length = 500
 
 class Alien(object):
 	def __init__(self, canvas, *args, **kwargs):
